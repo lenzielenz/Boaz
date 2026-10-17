@@ -1,0 +1,19 @@
+{
+  "name": "krachtbal-tekenclub",
+  "version": "0.1.0",
+  "description": "Samen live tekenen op één oneindig groot krachtbalblad — voor kinderen.",
+  "license": "MIT",
+  "type": "module",
+  "private": true,
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js",
+    "test": "node --test test/*.test.js"
+  },
+  "dependencies": {
+    "ws": "8.22.0"
+  }
+}

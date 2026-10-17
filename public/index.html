@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#06140d" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>Krachtbal Tekenclub</title>
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="/icon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <!-- ── Inloggen ──────────────────────────────────────────────── -->
+  <section id="login" class="screen" hidden>
+    <div class="login-card">
+      <div class="brand">
+        <img src="/icon.svg" alt="" class="brand-logo" />
+        <div>
+          <h1>Krachtbal Tekenclub</h1>
+          <p>Teken samen met je ploegmaats op één reuzegroot blad!</p>
+        </div>
+      </div>
+      <label class="field-label" for="nameInput">Hoe heet je?</label>
+      <input id="nameInput" class="big-input" maxlength="16" autocomplete="off" placeholder="Je naam" />
+      <p class="field-label">Kies je dier</p>
+      <div id="avatarPick" class="avatar-pick"></div>
+      <p class="field-label">Kies je kleur</p>
+      <div id="colorPick" class="color-pick"></div>
+      <button id="loginBtn" class="btn-primary big">Start met tekenen ✏️</button>
+    </div>
+    <div class="floating-balls" aria-hidden="true"></div>
+  </section>
+
+  <!-- ── Lobby ─────────────────────────────────────────────────── -->
+  <section id="lobby" class="screen" hidden>
+    <header class="lobby-head">
+      <div class="brand small">
+        <img src="/icon.svg" alt="" class="brand-logo" />
+        <h1>Krachtbal Tekenclub</h1>
+      </div>
+      <button id="meBtn" class="me-chip" title="Naam of dier veranderen"></button>
+    </header>
+    <h2 class="lobby-title">Kies een tekenruimte</h2>
+    <div id="roomGrid" class="room-grid"></div>
+  </section>
+
+  <!-- ── Tekenbord ─────────────────────────────────────────────── -->
+  <section id="board" class="screen" hidden>
+    <canvas id="baseCanvas"></canvas>
+    <canvas id="liveCanvas"></canvas>
+
+    <header class="topbar ui">
+      <button id="backBtn" class="tb-btn" title="Terug naar de ruimtes">⬅️</button>
+      <div class="room-title"><span id="roomName"></span><span id="netDot" class="net-dot" title="Verbinding"></span></div>
+      <div id="people" class="people"></div>
+      <div class="tb-group">
+        <button id="undoBtn" class="tb-btn" title="Ongedaan maken">↩️</button>
+        <button id="redoBtn" class="tb-btn" title="Opnieuw">↪️</button>
+      </div>
+      <div class="tb-group zoom">
+        <button id="zoomOut" class="tb-btn" title="Uitzoomen">➖</button>
+        <button id="zoomLabel" class="zoom-label" title="Alles tonen">100%</button>
+        <button id="zoomIn" class="tb-btn" title="Inzoomen">➕</button>
+      </div>
+      <div class="tb-group">
+        <button id="ideaBtn" class="tb-btn" title="Geef me een idee">💡</button>
+        <button id="reactBtn" class="tb-btn" title="Reageren">🎉</button>
+        <button id="photoBtn" class="tb-btn" title="Foto bewaren">📷</button>
+        <button id="soundBtn" class="tb-btn" title="Geluid aan/uit">🔊</button>
+        <button id="focusBtn" class="tb-btn" title="Knoppen verbergen">🙈</button>
+        <button id="fsBtn" class="tb-btn" title="Volledig scherm">⛶</button>
+      </div>
+    </header>
+
+    <nav id="tools" class="tools ui" aria-label="Gereedschap"></nav>
+
+    <aside class="palette ui" aria-label="Kleuren">
+      <div id="swatches" class="swatches"></div>
+      <label class="custom-color" title="Eigen kleur"><input id="customColor" type="color" value="#ff00aa" /><span>🎨</span></label>
+      <div class="size-box">
+        <div id="sizePreview" class="size-preview"><span></span></div>
+        <input id="sizeRange" type="range" min="2" max="90" value="12" aria-label="Dikte" />
+      </div>
+    </aside>
+
+    <div id="stickerSheet" class="sheet ui" hidden>
+      <div class="sheet-tabs">
+        <button data-tab="krachtbal" class="active">⚡ Krachtbal</button>
+        <button data-tab="emoji">😀 Emoji</button>
+      </div>
+      <div id="stickerGrid" class="sticker-grid"></div>
+      <div class="sheet-hint">Tik een sticker aan en tik dan op het blad om hem te plakken. Hoe dikker de grootte-schuif, hoe groter!</div>
+    </div>
+
+    <div id="fillSheet" class="sheet ui small" hidden>
+      <div class="sheet-hint">Teken een rondje rond een vorm en hij wordt opgevuld met:</div>
+      <div id="patternRow" class="pattern-row"></div>
+    </div>
+
+    <div id="reactSheet" class="react-sheet ui" hidden></div>
+
+    <div id="ideaBanner" class="idea-banner" hidden></div>
+    <input id="textInput" class="text-input" maxlength="60" hidden />
+    <div id="fx" class="fx"></div>
+    <button id="unfocusBtn" class="unfocus" hidden>🙉 Knoppen</button>
+  </section>
+
+  <!-- ── Nieuwe ruimte ─────────────────────────────────────────── -->
+  <dialog id="newRoomDlg" class="dlg">
+    <form method="dialog" id="newRoomForm">
+      <h2>Nieuwe tekenruimte</h2>
+      <label class="field-label" for="roomNameInput">Naam van de ruimte</label>
+      <input id="roomNameInput" class="big-input" maxlength="28" placeholder="bv. U12 Sint-Michiels" autocomplete="off" required />
+      <p class="field-label">Achtergrond</p>
+      <div class="bg-pick" id="bgPick">
+        <label><input type="radio" name="bg" value="veld" checked /><span class="bg-swatch veld"></span>Krachtbalveld</label>
+        <label><input type="radio" name="bg" value="wit" /><span class="bg-swatch wit"></span>Wit blad</label>
+        <label><input type="radio" name="bg" value="ruitjes" /><span class="bg-swatch ruitjes"></span>Ruitjes</label>
+        <label><input type="radio" name="bg" value="nacht" /><span class="bg-swatch nacht"></span>Nacht</label>
+      </div>
+      <p id="newRoomErr" class="err"></p>
+      <div class="dlg-actions">
+        <button value="cancel" class="btn-ghost" formnovalidate>Annuleren</button>
+        <button value="ok" class="btn-primary">Maak ruimte ✨</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="toasts" class="toasts" aria-live="polite"></div>
+
+  <script type="module" src="/js/app.js"></script>
+</body>
+</html>

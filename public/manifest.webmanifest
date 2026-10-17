@@ -1,0 +1,11 @@
+{
+  "name": "Krachtbal Tekenclub",
+  "short_name": "Tekenclub",
+  "description": "Samen tekenen op één reuzegroot krachtbalblad.",
+  "start_url": "/",
+  "display": "fullscreen",
+  "orientation": "any",
+  "background_color": "#06140d",
+  "theme_color": "#06140d",
+  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}

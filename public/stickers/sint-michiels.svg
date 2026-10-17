@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 120" width="213" height="256" role="img" aria-label="Sint-Michiels clubwapen">
+  <defs>
+    <linearGradient id="smRed" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#e4434a"/>
+      <stop offset="0.55" stop-color="#d81e26"/>
+      <stop offset="1" stop-color="#9c141b"/>
+    </linearGradient>
+    <linearGradient id="smSteel" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="0.5" stop-color="#dfe3e8"/>
+      <stop offset="1" stop-color="#a9afb8"/>
+    </linearGradient>
+  </defs>
+  <!-- schild -->
+  <path d="M50 4 L93 16 V58 C93 90 50 116 50 116 C50 116 7 90 7 58 V16 Z"
+        fill="url(#smRed)" stroke="#cdd2d8" stroke-width="3.5" stroke-linejoin="round"/>
+  <!-- binnenrand -->
+  <path d="M50 13 L85 23 V58 C85 84 50 105 50 105 C50 105 15 84 15 58 V23 Z"
+        fill="none" stroke="#ffffff" stroke-opacity="0.16" stroke-width="2"/>
+  <!-- ster -->
+  <path d="M50 19 l2.6 6.1 6.6 .5 -5 4.4 1.6 6.5 -5.8-3.5 -5.8 3.5 1.6-6.5 -5-4.4 6.6-.5 Z"
+        fill="url(#smSteel)"/>
+  <!-- zwaard van de Aartsengel MichaÃ«l (omhoog) -->
+  <path d="M50 40 L46.5 46 V72 H53.5 V46 Z" fill="url(#smSteel)"/>
+  <line x1="50" y1="47" x2="50" y2="71" stroke="#9aa0a8" stroke-width="0.8" stroke-opacity="0.6"/>
+  <rect x="36" y="72" width="28" height="5.5" rx="2.5" fill="#eef1f4" stroke="#b7bdc5" stroke-width="0.6"/>
+  <rect x="47.7" y="77.5" width="4.6" height="11" rx="2.2" fill="#cdd2d8"/>
+  <circle cx="50" cy="90" r="3.6" fill="#eef1f4" stroke="#b7bdc5" stroke-width="0.6"/>
+</svg>
