@@ -114,6 +114,17 @@ test('twee tablets tekenen samen en het blijft bewaard', async () => {
   a.send({ t: 'del', id: 'lijn-2' })
   await b.wait((m) => m.t === 'del' && m.id === 'lijn-2')
 
+  // tekenuitdaging: iedereen (ook de afzender) krijgt ze, en niet twee kort na elkaar
+  a.send({ t: 'idea', i: 3 })
+  const ia = await a.wait((m) => m.t === 'idea')
+  const ib = await b.wait((m) => m.t === 'idea')
+  assert.equal(ia.i, 3)
+  assert.equal(ib.name, 'Lotte')
+  b.send({ t: 'idea', i: 4 })
+  const err = await b.wait((m) => m.t === 'err' && m.code === 'idea')
+  assert.ok(err.msg)
+  b.send({ t: 'idea', i: 999 })
+
   a.ws.close()
   b.ws.close()
 

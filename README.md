@@ -9,7 +9,31 @@ Later gaat dit naar de website van Krachtbal Live (zie onderaan).
 
 ## Wat kan je allemaal?
 
-- **Penselen**: potlood, stift, neon, regenboog, spray en de **ballen-borstel**
+**Samen tekenen**
+- Wie meetekent, zie je meteen: aan het puntje van elke lijn die iemand nu
+  tekent hangt een naamlabel (**"🐨 Mats tekent…"**), dat nog even blijft
+  staan als de lijn af is ("🐨 Mats ✓").
+- Tekent iemand buiten jouw beeld? Dan verschijnt aan de rand een rondje met
+  zijn/haar dier en een pijltje. Tik erop en je vliegt ernaartoe.
+- In de bovenbalk wiebelt het dier van wie aan het tekenen is (met ✏️).
+- **💡 Tekenuitdaging** voor de hele ruimte: iedereen krijgt dezelfde opdracht
+  (30 ideeën, van heel makkelijk tot pittig) met een timer van 90 seconden, en
+  op het einde confetti en zoomt iedereen uit om alles te bekijken.
+- **🏅 Medailles** verzamelen (16 stuks, bv. Glitterfee, Spiegelmeester,
+  Teamspeler, Ballenkenner). Ze staan enkel op het eigen toestel: geen
+  ranglijst, geen wedstrijd tussen kinderen.
+
+**Extra voor de jongsten (en de ouderen)**
+- **🔷 Vormen**: cirkel, vierkant, driehoek, ster, hart, rechte lijn — slepen
+  of gewoon tikken. Optioneel opgevuld met het gekozen patroon.
+- **🦋 Spiegeltekenen**: vlinder (links/rechts), vier hoeken of caleidoscoop
+  (zes keer rondom). Eén keer ongedaan maken haalt alle kopieën weg.
+- **💎 Glitter**-penseel.
+- **🖍️ Kleurplaten**: krachtbal, speler, beker, trui, leeuw-mascotte en veld.
+  De lijnen blijven altijd bovenaan, dus je kan eronder inkleuren.
+
+**Gereedschap**
+- **Penselen**: potlood, stift, neon, regenboog, glitter, spray en de **ballen-borstel**
   (een spoor van krachtballen in de vijf officiële kleuren).
 - **Vullen**: teken een rondje en het wordt opgevuld met effen, dambord,
   bolletjes, strepen of krachtballen.

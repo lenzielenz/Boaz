@@ -45,7 +45,10 @@
         <img src="/icon.svg" alt="" class="brand-logo" />
         <h1>Krachtbal Tekenclub</h1>
       </div>
-      <button id="meBtn" class="me-chip" title="Naam of dier veranderen"></button>
+      <div class="lobby-actions">
+        <button id="medalBtn" class="me-chip medal-chip" title="Mijn medailles">🏅 <span id="medalCount">0</span></button>
+        <button id="meBtn" class="me-chip" title="Naam of dier veranderen"></button>
+      </div>
     </header>
     <h2 class="lobby-title">Kies een tekenruimte</h2>
     <div id="roomGrid" class="room-grid"></div>
@@ -83,6 +86,7 @@
 
     <aside class="palette ui" aria-label="Kleuren">
       <div id="swatches" class="swatches"></div>
+      <button id="mirrorBtn" class="mirror-btn" title="Spiegeltekenen">🦋<small>uit</small></button>
       <label class="custom-color" title="Eigen kleur"><input id="customColor" type="color" value="#ff00aa" /><span>🎨</span></label>
       <div class="size-box">
         <div id="sizePreview" class="size-preview"><span></span></div>
@@ -93,10 +97,17 @@
     <div id="stickerSheet" class="sheet ui" hidden>
       <div class="sheet-tabs">
         <button data-tab="krachtbal" class="active">⚡ Krachtbal</button>
+        <button data-tab="kleurplaat">🖍️ Kleurplaten</button>
         <button data-tab="emoji">😀 Emoji</button>
       </div>
       <div id="stickerGrid" class="sticker-grid"></div>
       <div class="sheet-hint">Tik een sticker aan en tik dan op het blad om hem te plakken. Hoe dikker de grootte-schuif, hoe groter!</div>
+    </div>
+
+    <div id="shapeSheet" class="sheet ui small shape-sheet" hidden>
+      <div class="sheet-hint">Kies een vorm en sleep op het blad (of tik voor een vorm op standaardgrootte).</div>
+      <div id="shapeRow" class="shape-row"></div>
+      <label class="switch"><input id="shapeFill" type="checkbox" /><span></span> Opvullen <small>(patroon kies je bij 🪣)</small></label>
     </div>
 
     <div id="fillSheet" class="sheet ui small" hidden>
@@ -130,6 +141,16 @@
         <button value="cancel" class="btn-ghost" formnovalidate>Annuleren</button>
         <button value="ok" class="btn-primary">Maak ruimte ✨</button>
       </div>
+    </form>
+  </dialog>
+
+  <!-- ── Medailles ─────────────────────────────────────────────── -->
+  <dialog id="medalDlg" class="dlg medal-dlg">
+    <form method="dialog">
+      <h2>🏅 Mijn medailles</h2>
+      <p class="medal-sub" id="medalSub"></p>
+      <div id="medalGrid" class="medal-grid"></div>
+      <div class="dlg-actions"><button class="btn-primary">Verder tekenen ✏️</button></div>
     </form>
   </dialog>
 

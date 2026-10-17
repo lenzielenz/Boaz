@@ -156,6 +156,63 @@ const SVGS = {
   kroon: svg('0 0 100 100', `<path d="M10 30 L30 52 L50 18 L70 52 L90 30 L82 80 H18 Z" fill="#ffd166" stroke="#e8a400" stroke-width="4" stroke-linejoin="round"/><circle cx="50" cy="62" r="7" fill="#dc2626"/><circle cx="30" cy="66" r="5" fill="#2563eb"/><circle cx="70" cy="66" r="5" fill="#06d6a0"/>`),
 }
 
+// ── Kleurplaten: dikke zwarte lijnen, geen vulling ──────────────────────────
+const KP = 'fill="none" stroke="#1f2937" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"'
+
+function kpBal() {
+  // dezelfde naden als de echte krachtbal, maar dan als lijntekening
+  const seams = BALL_GEO.seams.map((d) => `<path d="${d}"/>`).join('')
+  const [nx, ny] = BALL_GEO.node
+  return svg('0 0 24 24', `<g fill="none" stroke="#1f2937" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="10.4" stroke-width=".8"/>
+    <g stroke-width=".55">${seams}</g>
+    <circle cx="${nx}" cy="${ny}" r="1.5" stroke-width=".6"/>
+    <path d="M6.5 7.2 Q8 5.4 10.2 5" stroke-width=".45"/></g>`)
+}
+
+Object.assign(SVGS, {
+  'kp-bal': kpBal(),
+  'kp-speler': svg('0 0 100 100', `<g ${KP}>
+    <circle cx="44" cy="18" r="10"/>
+    <path d="M40 15 h0.1 M48 15 h0.1" stroke-width="4"/><path d="M39 21 Q44 26 49 21"/>
+    <path d="M32 32 Q44 27 56 32 L58 62 L30 62 Z"/>
+    <path d="M37 46 h14" stroke-dasharray="3 3"/>
+    <path d="M32 34 L18 50 L24 54"/><path d="M56 34 L70 22 L74 12"/>
+    <path d="M36 62 L28 82 L18 88"/><path d="M52 62 L58 82 L70 88"/>
+    <path d="M14 86 Q18 92 24 88"/><path d="M64 86 Q70 92 76 88"/>
+    <circle cx="80" cy="12" r="10"/><path d="M71 9 Q80 16 89 9 M80 2 Q75 12 80 22"/>
+  </g>`),
+  'kp-beker': svg('0 0 100 100', `<g ${KP}>
+    <path d="M22 18 H8 Q6 40 30 46"/><path d="M78 18 H92 Q94 40 70 46"/>
+    <path d="M22 10 H78 V30 Q78 58 50 62 Q22 58 22 30 Z"/>
+    <rect x="44" y="62" width="12" height="12"/><rect x="30" y="74" width="40" height="10" rx="2"/>
+    <rect x="24" y="84" width="52" height="10" rx="2"/>
+    <path d="M42 28 L50 20 L58 28 L55 38 H45 Z"/><path d="M36 88 H64" stroke-dasharray="2 4"/>
+  </g>`),
+  'kp-trui': svg('0 0 100 100', `<g ${KP}>
+    <path d="M30 10 L42 6 Q50 14 58 6 L70 10 L94 26 L84 44 L74 38 L74 92 Q50 96 26 92 L26 38 L16 44 L6 26 Z"/>
+    <path d="M42 6 Q50 18 58 6"/><path d="M26 38 L26 92 M74 38 L74 92" stroke-dasharray="4 4"/>
+    <path d="M18 28 L26 22 M82 28 L74 22"/>
+  </g>
+  <text x="50" y="72" font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="34" fill="none" stroke="#1f2937" stroke-width="2" text-anchor="middle">10</text>`),
+  'kp-leeuw': svg('0 0 100 100', `<g ${KP}>
+    <path d="M50 6 Q60 2 64 12 Q76 8 78 20 Q90 22 88 34 Q98 42 90 52 Q96 64 84 68 Q86 82 72 82 Q68 94 56 90 Q50 98 44 90 Q32 94 28 82 Q14 82 16 68 Q4 64 10 52 Q2 42 12 34 Q10 22 22 20 Q24 8 36 12 Q40 2 50 6 Z"/>
+    <circle cx="50" cy="50" r="27"/>
+    <circle cx="28" cy="28" r="6"/><circle cx="72" cy="28" r="6"/>
+    <circle cx="40" cy="44" r="4"/><circle cx="60" cy="44" r="4"/>
+    <path d="M44 56 L56 56 L50 63 Z"/><path d="M50 63 Q50 70 42 70 M50 63 Q50 70 58 70"/>
+    <path d="M30 58 L20 56 M30 62 L21 64 M70 58 L80 56 M70 62 L79 64"/>
+  </g>`),
+  'kp-veld': svg('0 0 120 60', `<g ${KP} stroke-width="2">
+    <rect x="3" y="9" width="114" height="42"/>
+    <line x1="28" y1="9" x2="28" y2="51"/><line x1="92" y1="9" x2="92" y2="51"/>
+    <line x1="38" y1="9" x2="38" y2="51" stroke-dasharray="3 3"/><line x1="82" y1="9" x2="82" y2="51" stroke-dasharray="3 3"/>
+    <line x1="60" y1="9" x2="60" y2="51"/><circle cx="60" cy="30" r="1.5"/>
+    <circle cx="16" cy="24" r="4"/><circle cx="16" cy="38" r="4"/><circle cx="48" cy="20" r="4"/><circle cx="48" cy="40" r="4"/>
+    <circle cx="104" cy="24" r="4"/><circle cx="104" cy="38" r="4"/><circle cx="72" cy="20" r="4"/><circle cx="72" cy="40" r="4"/>
+  </g>`),
+})
+
 const EXTERNAL = { 'sint-michiels': '/stickers/sint-michiels.svg' }
 
 export const STICKER_LABELS = {
@@ -164,10 +221,12 @@ export const STICKER_LABELS = {
   fluit: 'Scheidsrechter', 'trui-groen': 'Trui', 'trui-rood': 'Trui', 'trui-blauw': 'Trui', doelpunt: 'Doelpunt!',
   vuurbal: 'Krachtschot', scorebord: 'Scorebord', speler: 'Speler', wimpel: 'Wimpel', supporter: 'Supporter',
   ster: 'Ster', hart: 'Hart', bliksem: 'Bliksem', kroon: 'Kroon',
+  'kp-bal': 'Kleurplaat bal', 'kp-speler': 'Kleurplaat speler', 'kp-beker': 'Kleurplaat beker',
+  'kp-trui': 'Kleurplaat trui', 'kp-leeuw': 'Kleurplaat mascotte', 'kp-veld': 'Kleurplaat veld',
 }
 
 /** Verhouding breedte/hoogte per sticker (voor stickers die niet vierkant zijn). */
-export const STICKER_ASPECT = { veld: 2, doelpunt: 1.4, scorebord: 1.5, wimpel: 1.5, supporter: 1.5, 'sint-michiels': 100 / 120 }
+export const STICKER_ASPECT = { veld: 2, 'kp-veld': 2, doelpunt: 1.4, scorebord: 1.5, wimpel: 1.5, supporter: 1.5, 'sint-michiels': 100 / 120 }
 
 const images = new Map()
 const listeners = new Set()

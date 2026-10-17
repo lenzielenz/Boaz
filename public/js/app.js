@@ -5,6 +5,8 @@ import { Net } from './net.js'
 import { Board } from './board.js'
 import { stickerUrl } from './stickers.js'
 import { sound } from './sound.js'
+import { MEDALS, hasMedal, medalCount, onMedal } from './medals.js'
+import { confetti } from './fx.js'
 
 const $ = (id) => document.getElementById(id)
 const PROFILE_COLORS = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#06d6a0', '#06b6d4', '#3b82f6', '#8b5cf6', '#ec4899']
@@ -40,6 +42,57 @@ function toast(msg) {
   $('toasts').appendChild(el)
   setTimeout(() => el.remove(), 3200)
 }
+
+// Nieuwe medaille: groot in beeld, met confetti. Meerdere tegelijk? Netjes na elkaar.
+let medalFreeAt = 0
+onMedal((m) => {
+  const now = Date.now()
+  const at = Math.max(now, medalFreeAt)
+  medalFreeAt = at + 2400
+  setTimeout(() => showMedal(m), at - now)
+})
+
+function showMedal(m) {
+  const el = document.createElement('div')
+  el.className = 'medal-pop'
+  const icon = document.createElement('div')
+  icon.className = 'medal-icon'
+  icon.textContent = m.icon
+  const txt = document.createElement('div')
+  const small = document.createElement('small')
+  small.textContent = 'Nieuwe medaille!'
+  const b = document.createElement('b')
+  b.textContent = m.name
+  txt.append(small, b)
+  el.append(icon, txt)
+  document.body.appendChild(el)
+  setTimeout(() => el.remove(), 3800)
+  confetti(70)
+  sound.fanfare()
+  $('medalCount').textContent = medalCount()
+}
+
+function openMedals() {
+  const grid = $('medalGrid')
+  grid.innerHTML = ''
+  for (const m of MEDALS) {
+    const got = hasMedal(m.id)
+    const card = document.createElement('div')
+    card.className = 'medal-card' + (got ? ' got' : '')
+    const icon = document.createElement('div')
+    icon.className = 'medal-icon'
+    icon.textContent = got ? m.icon : '🔒'
+    const name = document.createElement('b')
+    name.textContent = m.name
+    const how = document.createElement('small')
+    how.textContent = m.how
+    card.append(icon, name, how)
+    grid.appendChild(card)
+  }
+  $('medalSub').textContent = `Je hebt er ${medalCount()} van de ${MEDALS.length}. Kan jij ze allemaal verzamelen?`
+  $('medalDlg').showModal()
+}
+$('medalBtn').onclick = openMedals
 
 // ── Verbinding + bord ────────────────────────────────────────────────────────
 const net = new Net({
@@ -179,6 +232,7 @@ function renderMe() {
   av.style.background = profile.color
   av.textContent = profile.avatar
   b.append(av, profile.name)
+  $('medalCount').textContent = medalCount()
 }
 $('meBtn').onclick = () => showLogin()
 

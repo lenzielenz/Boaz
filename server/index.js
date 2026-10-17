@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url'
 import { WebSocketServer } from 'ws'
 
 import { Store } from './store.js'
-import { AVATARS, BRUSHES, LIMITS, REACTIONS, cleanName, sanitizeItem } from '../public/js/shared.js'
+import { AVATARS, BRUSHES, IDEA_COUNT, LIMITS, REACTIONS, cleanName, sanitizeItem } from '../public/js/shared.js'
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url))
 const PUBLIC = path.join(ROOT, '..', 'public')
@@ -33,6 +33,9 @@ const MIME = {
 // ── Live-toestand per ruimte (niet opgeslagen) ─────────────────────────────
 /** @type {Map<string, Set<Client>>} */
 const roomClients = new Map()
+/** Wanneer de laatste tekenuitdaging per ruimte startte (één tegelijk). */
+const roomIdeaAt = new Map()
+const IDEA_COOLDOWN = 20_000
 
 /**
  * @typedef {{ ws: import('ws').WebSocket, uid: number, owner: string, name: string, avatar: string,
@@ -65,6 +68,7 @@ function leaveRoom(c) {
     set.delete(c)
     if (set.size === 0) {
       roomClients.delete(room)
+      roomIdeaAt.delete(room)
       store.markIdle(room)
     } else {
       broadcast(room, { t: 'gone', u: c.uid })
@@ -171,6 +175,18 @@ function onMessage(c, raw) {
       if (REACTIONS.includes(m.e) && Number.isFinite(m.x + m.y))
         broadcast(room, { t: 'react', u: c.uid, e: m.e, x: Math.round(m.x), y: Math.round(m.y) })
       return
+    case 'idea': {
+      // Een tekenuitdaging voor iedereen in de ruimte (ook de afzender, zodat de timers gelijk lopen).
+      if (!Number.isInteger(m.i) || m.i < 0 || m.i >= IDEA_COUNT) return
+      const now = Date.now()
+      if (now - (roomIdeaAt.get(room) ?? 0) < IDEA_COOLDOWN) {
+        send(c, { t: 'err', code: 'idea', msg: '💡 Er is net een uitdaging gestart. Even wachten!' })
+        return
+      }
+      roomIdeaAt.set(room, now)
+      broadcast(room, { t: 'idea', i: m.i, u: c.uid, name: c.name, avatar: c.avatar })
+      return
+    }
     case 'thumb': {
       // Kleine voorvertoning voor de lobby, gemaakt door een browser in de ruimte.
       const now = Date.now()

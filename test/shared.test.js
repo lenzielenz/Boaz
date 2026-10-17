@@ -22,6 +22,8 @@ test('ongeldige items worden geweigerd', () => {
 test('stickers, emoji en tekst', () => {
   assert.ok(sanitizeItem({ id: 'a', k: 'k', s: 'bal-rood', x: 1, y: 2, z: 50, r: 0.1 }, 'o'))
   assert.ok(sanitizeItem({ id: 'a', k: 'k', s: 'e:🔥', x: 1, y: 2, z: 50, r: 0 }, 'o'))
+  assert.ok(sanitizeItem({ id: 'a', k: 'k', s: 'kp-leeuw', x: 1, y: 2, z: 500, r: 0 }, 'o'))
+  assert.ok(sanitizeItem({ id: 'a', k: 's', b: 'glitter', c: '#ff00aa', w: 8, sd: 3, p: [0, 0, 9, 9] }, 'o'))
   assert.equal(sanitizeItem({ id: 'a', k: 'k', s: 'e:💩', x: 1, y: 2, z: 50, r: 0 }, 'o'), null)
   const t = sanitizeItem({ id: 'a', k: 't', v: '  Hup\u0000 Sint-Michiels!  ', c: '#000000', x: 0, y: 0, z: 20 }, 'o')
   assert.equal(t.v, 'Hup Sint-Michiels!')

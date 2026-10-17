@@ -13,6 +13,8 @@ function ctx() {
 
 function tone(f0, f1, dur, type = 'sine', vol = 0.12, delay = 0) {
   if (!sound.enabled) return
+  // Browsers laten pas geluid toe na een eerste tik op de pagina.
+  if (navigator.userActivation && !navigator.userActivation.hasBeenActive) return
   const a = ctx()
   if (!a) return
   const t = a.currentTime + delay
@@ -44,4 +46,12 @@ export const sound = {
     tone(880, 880, 0.14, 'sine', 0.08, 0.1)
   },
   camera: () => tone(2000, 400, 0.12, 'square', 0.05),
+  sparkle: () => {
+    tone(1400, 2200, 0.08, 'sine', 0.05)
+    tone(1800, 2600, 0.08, 'sine', 0.04, 0.06)
+  },
+  fanfare: () => {
+    ;[523, 659, 784, 1047].forEach((f, i) => tone(f, f, 0.16, 'triangle', 0.1, i * 0.11))
+  },
+  tick2: () => tone(900, 900, 0.05, 'sine', 0.05),
 }

@@ -2,7 +2,7 @@
 // staat (de aanroeper zet de transform van de camera). Alles hier is deterministisch:
 // elke tablet tekent exact dezelfde lijnen, ook de spray en de regenboog.
 
-import { BALLS } from './shared.js'
+import { BALLS, isColoringPage } from './shared.js'
 import { STICKER_ASPECT, stickerImage } from './stickers.js'
 
 export const EMOJI_FONT = '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif'
@@ -76,6 +76,28 @@ function sprayPath(it) {
   return path
 }
 
+// Glitter: fonkelende sterretjes rond de lijn, in de gekozen kleur, lichter en wit.
+function glitterPaths(it) {
+  const rnd = mulberry32(it.sd || 1)
+  const paths = [new Path2D(), new Path2D(), new Path2D()]
+  walk(it.p, Math.max(it.w * 0.35, 0.5), (x, y) => {
+    for (let k = 0; k < 2; k++) {
+      const a = rnd() * Math.PI * 2
+      const d = Math.sqrt(rnd()) * it.w * 0.9
+      const cx = x + Math.cos(a) * d, cy = y + Math.sin(a) * d
+      const r = it.w * (0.18 + rnd() * 0.4)
+      const p = paths[Math.floor(rnd() * 3)]
+      // vierpuntige ster
+      p.moveTo(cx, cy - r)
+      p.quadraticCurveTo(cx, cy, cx + r, cy)
+      p.quadraticCurveTo(cx, cy, cx, cy + r)
+      p.quadraticCurveTo(cx, cy, cx - r, cy)
+      p.quadraticCurveTo(cx, cy, cx, cy - r)
+    }
+  })
+  return paths
+}
+
 function ballStamps(it) {
   const rnd = mulberry32(it.sd || 1)
   const out = []
@@ -105,6 +127,10 @@ function getCache(it, live) {
     if (it.b === 'spray') c.spray = sprayPath(it)
     else if (it.b === 'balls') c.balls = ballStamps(it)
     else if (it.b === 'rainbow') c.segs = rainbowSegs(it)
+    else if (it.b === 'glitter') {
+      c.glitter = glitterPaths(it)
+      c.path = smoothPath(it.p)
+    }
     else c.path = smoothPath(it.p)
   } else if (it.k === 'f') {
     c.path = smoothPath(it.p, true)
@@ -178,6 +204,21 @@ export function drawItem(ctx, it, live = false) {
   if (it.k === 't') return drawText(ctx, it)
 }
 
+/**
+ * Tekent een reeks items in de juiste lagen: kleurplaten komen altijd bovenaan,
+ * zodat hun lijnen zichtbaar blijven als kinderen eronder inkleuren.
+ * `visible(it)` mag items overslaan (bv. buiten beeld).
+ */
+export function drawItems(ctx, items, visible = () => true) {
+  let pages = null
+  for (const it of items) {
+    if (!visible(it)) continue
+    if (it.k === 'k' && isColoringPage(it.s)) (pages ??= []).push(it)
+    else drawItem(ctx, it)
+  }
+  if (pages) for (const it of pages) drawItem(ctx, it)
+}
+
 function drawStroke(ctx, it, live) {
   const c = getCache(it, live)
   ctx.lineCap = 'round'
@@ -230,6 +271,19 @@ function drawStroke(ctx, it, live) {
     case 'spray':
       ctx.fillStyle = it.c
       ctx.fill(c.spray)
+      break
+    case 'glitter':
+      ctx.globalAlpha = 0.35
+      ctx.strokeStyle = it.c
+      ctx.lineWidth = it.w * 0.5
+      ctx.stroke(c.path)
+      ctx.globalAlpha = 1
+      ctx.fillStyle = it.c
+      ctx.fill(c.glitter[0])
+      ctx.fillStyle = tint(it.c, 0.5)
+      ctx.fill(c.glitter[1])
+      ctx.fillStyle = '#ffffff'
+      ctx.fill(c.glitter[2])
       break
     case 'balls':
       for (const b of c.balls) {

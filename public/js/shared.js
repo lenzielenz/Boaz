@@ -1,7 +1,7 @@
 // Gedeelde constanten + validatie. Wordt zowel door de browser als door de server
 // (Node) geladen, dus: puur JavaScript, geen DOM, geen Node-API's.
 
-export const BRUSHES = ['pen', 'marker', 'neon', 'rainbow', 'spray', 'balls']
+export const BRUSHES = ['pen', 'marker', 'neon', 'rainbow', 'glitter', 'spray', 'balls']
 export const PATTERNS = ['solid', 'checker', 'dots', 'stripes', 'balls']
 export const BACKGROUNDS = ['wit', 'veld', 'ruitjes', 'nacht']
 
@@ -19,7 +19,14 @@ export const STICKERS = [
   'logo', 'sint-michiels', 'veld', 'beker', 'medaille', 'fluit', 'trui-groen', 'trui-rood',
   'trui-blauw', 'doelpunt', 'vuurbal', 'scorebord', 'speler', 'wimpel', 'supporter',
   'ster', 'hart', 'bliksem', 'kroon',
+  // kleurplaten: enkel lijnen, worden altijd bovenop getekend zodat je eronder kan inkleuren
+  'kp-bal', 'kp-speler', 'kp-beker', 'kp-trui', 'kp-leeuw', 'kp-veld',
 ]
+
+export const isColoringPage = (id) => typeof id === 'string' && id.startsWith('kp-')
+
+/** Aantal tekenuitdagingen (de teksten staan in de browser; de server checkt enkel de index). */
+export const IDEA_COUNT = 30
 
 export const EMOJIS = [
   '😀', '😂', '😍', '🤩', '😎', '🥳', '😮', '😜', '👍', '👏', '💪', '🙌', '🎉', '🎊', '⭐',
@@ -115,7 +122,7 @@ export function itemBounds(it) {
       if (y > y1) y1 = y
     }
     // Spray en ballen-borstel komen verder dan de lijn zelf.
-    const pad = it.k === 's' ? it.w * (it.b === 'spray' || it.b === 'neon' ? 1.6 : it.b === 'balls' ? 1.2 : 0.6) : 0
+    const pad = it.k === 's' ? it.w * (it.b === 'spray' || it.b === 'neon' || it.b === 'glitter' ? 1.6 : it.b === 'balls' ? 1.2 : 0.6) : 0
     return [x0 - pad, y0 - pad, x1 + pad, y1 + pad]
   }
   if (it.k === 'k') {

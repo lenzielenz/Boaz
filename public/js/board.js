@@ -5,10 +5,12 @@
 // hertekend als er iets verandert; `live` (lijnen die nu getekend worden,
 // cursors, sticker-voorbeeld) elk frame. Zo blijft het vlot, ook met veel items.
 
-import { BALLS, EMOJIS, LIMITS, REACTIONS, STICKERS, itemBounds, sanitizeItem } from './shared.js'
-import { BG_COLORS, FIELD, boundsOf, drawBackground, drawItem, EMOJI_FONT } from './render.js'
+import { BALLS, EMOJIS, IDEA_COUNT, LIMITS, REACTIONS, STICKERS, isColoringPage, itemBounds, sanitizeItem } from './shared.js'
+import { BG_COLORS, FIELD, boundsOf, drawBackground, drawItem, drawItems, EMOJI_FONT } from './render.js'
 import { STICKER_LABELS, onStickerLoad, preloadStickers, stickerUrl } from './stickers.js'
 import { sound } from './sound.js'
+import { award, collect, count } from './medals.js'
+import { confetti } from './fx.js'
 
 const $ = (id) => document.getElementById(id)
 
@@ -22,9 +24,11 @@ const TOOLS = [
   { id: 'marker', icon: '🖍️', label: 'Stift' },
   { id: 'neon', icon: '✨', label: 'Neon' },
   { id: 'rainbow', icon: '🌈', label: 'Regenboog' },
+  { id: 'glitter', icon: '💎', label: 'Glitter' },
   { id: 'spray', icon: '💨', label: 'Spray' },
   { id: 'balls', icon: 'ball', label: 'Ballen' },
   'sep',
+  { id: 'shape', icon: '🔷', label: 'Vormen' },
   { id: 'fill', icon: '🪣', label: 'Vullen' },
   { id: 'sticker', icon: '⭐', label: 'Stickers' },
   { id: 'text', icon: '🔤', label: 'Tekst' },
@@ -32,7 +36,26 @@ const TOOLS = [
   { id: 'eraser', icon: '🧽', label: 'Gom' },
   { id: 'hand', icon: '✋', label: 'Schuif' },
 ]
-const BRUSH_TOOLS = ['pen', 'marker', 'neon', 'rainbow', 'spray', 'balls']
+const BRUSH_TOOLS = ['pen', 'marker', 'neon', 'rainbow', 'glitter', 'spray', 'balls']
+
+const SHAPES = [
+  { id: 'circle', icon: '⭕', label: 'Cirkel' },
+  { id: 'square', icon: '🟦', label: 'Vierkant' },
+  { id: 'triangle', icon: '🔺', label: 'Driehoek' },
+  { id: 'star', icon: '⭐', label: 'Ster' },
+  { id: 'heart', icon: '❤️', label: 'Hart' },
+  { id: 'line', icon: '📏', label: 'Rechte lijn' },
+]
+
+// Spiegelstanden: 0 = uit, 2 = vlinder (links/rechts), 4 = vier hoeken, 6 = caleidoscoop.
+const MIRRORS = [
+  { n: 0, icon: '🦋', label: 'uit' },
+  { n: 2, icon: '🦋', label: '↔' },
+  { n: 4, icon: '🦋', label: '✚' },
+  { n: 6, icon: '🦋', label: '✳' },
+]
+
+const CHALLENGE_SECONDS = 90
 
 const PATTERN_LIST = [
   { id: 'solid', label: 'Effen' },
@@ -42,7 +65,10 @@ const PATTERN_LIST = [
   { id: 'balls', label: 'Krachtballen' },
 ]
 
+// Tekenuitdagingen, van heel makkelijk (6 jaar) tot pittig (12 jaar).
+// Het aantal moet gelijk blijven aan IDEA_COUNT in shared.js (de server checkt de index).
 const IDEAS = [
+  'Teken een krachtbal met een grappig gezichtje 😊',
   'Teken jouw ploeg op het veld! 🏟️',
   'Teken de scheidsrechter met een reuzegrote fluit 😄',
   'Ontwerp een nieuwe trui voor je club 👕',
@@ -58,7 +84,23 @@ const IDEAS = [
   'Teken een krachtbalveld op de maan 🌙',
   'Teken je favoriete krachtbalspeler ⭐',
   'Teken een bal in alle kleuren: oranje, geel, rood, blauw en wit 🎨',
+  'Teken een regenboog boven het veld 🌈',
+  'Teken een dier dat krachtbal speelt 🐸',
+  'Maak samen de grootste zon van de wereld ☀️',
+  'Teken een krachtbal-robot 🤖',
+  'Teken een medaille voor je beste vriend(in) 🥇',
+  'Teken het weer tijdens de match: zon, regen of sneeuw? 🌦️',
+  'Teken een sporttas en alles wat erin zit 🎒',
+  'Teken een krachtbal die kan vliegen 🚀',
+  'Teken iedereen die naar jouw match komt kijken 👨‍👩‍👧',
+  'Maak samen een bloementuin rond het veld 🌸',
+  'Teken een kasteel voor de kampioenen 🏰',
+  'Teken een krachtbalveld onder water 🐠',
+  'Teken je eigen clubwapen 🛡️',
+  'Teken hoe krachtbal eruit ziet in het jaar 3000 🛸',
 ]
+
+if (IDEAS.length !== IDEA_COUNT) console.warn('IDEAS en IDEA_COUNT lopen niet gelijk')
 
 export class Board {
   constructor({ net, toast }) {
@@ -82,12 +124,20 @@ export class Board {
     this.size = 12
     this.sticker = 'bal-rood'
     this.pattern = 'checker'
+    this.shape = 'circle'
+    this.shapeFill = false
+    this.mirror = 0
+    this.lastBrush = 'pen'
 
     this.undoStack = []
     this.redoStack = []
     this.lives = new Map()
     this.cursors = new Map()
     this.users = []
+    this.drawing = new Map() // uid -> tot wanneer die persoon "aan het tekenen" is
+    this.recent = [] // naamlabels die even blijven hangen na een afgewerkte lijn
+    this.edgeHits = [] // pijltjes aan de rand (tik = ernaartoe)
+    this.challenge = null
 
     this.pointers = new Map()
     this.gesture = null
@@ -129,9 +179,13 @@ export class Board {
     this.bounds.clear()
     this.lives.clear()
     this.cursors.clear()
+    this.drawing.clear()
+    this.recent = []
     this.undoStack = []
     this.redoStack = []
     this.firstSnapshot = true
+    this.#endChallenge()
+    if (collect('rooms', roomId) >= 3) award('ontdekker')
     $('roomName').textContent = 'Laden…'
     this.active = true
     this.dirtyBase = true
@@ -147,7 +201,9 @@ export class Board {
     this.#cancelCurrent()
     $('stickerSheet').hidden = true
     $('fillSheet').hidden = true
+    $('shapeSheet').hidden = true
     $('reactSheet').hidden = true
+    this.#endChallenge()
     if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {})
   }
 
@@ -185,14 +241,19 @@ export class Board {
           if (c) Object.assign(c, { name: u.name, avatar: u.avatar, color: u.color })
         }
         this.#renderPeople()
+        if (m.list.length >= 3) award('team')
         return
       }
+      case 'idea':
+        this.#startChallenge(m)
+        return
       case 'hi':
         this.toast(`${m.avatar} ${m.name} komt meetekenen!`)
         sound.join()
         return
       case 'gone': {
         this.cursors.delete(m.u)
+        this.drawing.delete(m.u)
         for (const k of this.lives.keys()) if (k.startsWith(m.u + ':')) this.lives.delete(k)
         this.dirtyLive = true
         return
@@ -201,11 +262,12 @@ export class Board {
         const key = `${m.u}:${m.sid}`
         let l = this.lives.get(key)
         if (!l) {
-          l = { b: m.b, c: m.c, w: m.w, sd: m.sd, p: [], t: 0 }
+          l = { u: m.u, b: m.b, c: m.c, w: m.w, sd: m.sd, p: [], t: 0 }
           this.lives.set(key, l)
         }
         for (const v of m.pts) l.p.push(v)
         l.t = performance.now()
+        this.drawing.set(m.u, l.t + 900)
         this.dirtyLive = true
         return
       }
@@ -216,6 +278,7 @@ export class Board {
       case 'add':
         if (m.sid) this.lives.delete(`${m.u}:${m.sid}`)
         this.#put(m.item)
+        if (m.u && m.u !== this.uid) this.#othersAdded(m.u, m.item)
         this.dirtyBase = true
         this.dirtyLive = true
         return
@@ -247,7 +310,7 @@ export class Board {
         return
       }
       case 'err':
-        if (m.code === 'full') this.toast(m.msg)
+        if (m.code === 'full' || m.code === 'idea') this.toast(m.msg)
         return
     }
   }
@@ -269,23 +332,52 @@ export class Board {
   }
 
   #commit(raw, sid) {
-    const item = sanitizeItem(raw, this.owner)
-    if (!item) return null
-    this.#put(item)
-    this.net.send({ t: 'add', item, sid })
-    this.undoStack.push({ a: 'add', item })
+    return this.#commitMany([raw], sid)[0] ?? null
+  }
+
+  /** Meerdere items als één stap toevoegen (spiegeltekenen, vorm + vulling): één keer ongedaan maken. */
+  #commitMany(raws, sid) {
+    const items = []
+    for (const raw of raws) {
+      const item = sanitizeItem(raw, this.owner)
+      if (!item) continue
+      this.#put(item)
+      // De live lijn hoort bij het eerste item; de spiegelkopieën krijgen geen sid.
+      this.net.send({ t: 'add', item, sid: items.length ? undefined : sid })
+      items.push(item)
+      this.#medalsFor(item)
+    }
+    if (!items.length) return items
+    this.undoStack.push({ a: 'add', items })
     if (this.undoStack.length > 200) this.undoStack.shift()
     this.redoStack = []
     this.changedSinceThumb = true
     this.dirtyBase = true
     this.#updateUndo()
-    return item
+    return items
+  }
+
+  #medalsFor(it) {
+    if (it.k === 's') {
+      const n = count('lines')
+      if (n >= 1) award('eerste')
+      if (n >= 25) award('tekenaar')
+      if (n >= 150) award('kunstenaar')
+      if (it.b === 'rainbow') award('regenboog')
+      if (it.b === 'glitter') award('glitter')
+    } else if (it.k === 'k') {
+      if (count('stickers') >= 10) award('plakker')
+      if (isColoringPage(it.s)) award('inkleuren')
+      if (it.s.startsWith('bal-') && collect('balls', it.s) >= 5) award('ballen')
+    } else if (it.k === 'f') {
+      if (count('fills') >= 5) award('vuller')
+    }
   }
 
   #erase(item) {
     this.#drop(item.id)
     this.net.send({ t: 'del', id: item.id })
-    this.undoStack.push({ a: 'del', item })
+    this.undoStack.push({ a: 'del', items: [item] })
     this.redoStack = []
     this.changedSinceThumb = true
     this.dirtyBase = true
@@ -311,12 +403,14 @@ export class Board {
 
   #apply(op, reverse) {
     const add = (op.a === 'add') !== reverse
-    if (add) {
-      this.#put(op.item)
-      this.net.send({ t: 'add', item: op.item })
-    } else {
-      this.#drop(op.item.id)
-      this.net.send({ t: 'del', id: op.item.id })
+    for (const item of op.items) {
+      if (add) {
+        this.#put(item)
+        this.net.send({ t: 'add', item })
+      } else {
+        this.#drop(item.id)
+        this.net.send({ t: 'del', id: item.id })
+      }
     }
     this.changedSinceThumb = true
     this.dirtyBase = true
@@ -431,6 +525,16 @@ export class Board {
         this.dirtyLive = true
       }
     }
+    // Naamlabels bij wie tekent bewegen (puntjes "tekent…") en vervagen: blijven hertekenen.
+    if (this.recent.length) this.recent = this.recent.filter((r) => now - r.t < 2600)
+    if (this.lives.size || this.recent.length) this.dirtyLive = true
+    if (now - (this.lastPeople ?? 0) > 250) {
+      this.lastPeople = now
+      for (const b of $('people').children) {
+        const u = Number(b.dataset.u)
+        b.classList.toggle('drawing', u !== this.uid && (this.drawing.get(u) ?? 0) > now)
+      }
+    }
     if (this.dirtyBase || this.viewDirty) {
       // Is een volledige hertekening traag (heel volle ruimte), dan tonen we tijdens
       // het schuiven/zoomen een verschoven kopie en tekenen we pas alles opnieuw
@@ -466,12 +570,11 @@ export class Board {
     const vx0 = this.view.x, vy0 = this.view.y
     const vx1 = vx0 + this.w / this.view.s, vy1 = vy0 + this.h / this.view.s
     const tiny = 0.6 / this.view.s
-    for (const it of this.items.values()) {
+    drawItems(ctx, this.items.values(), (it) => {
       const b = this.bounds.get(it.id)
-      if (b[2] < vx0 || b[0] > vx1 || b[3] < vy0 || b[1] > vy1) continue
-      if (b[2] - b[0] < tiny && b[3] - b[1] < tiny) continue
-      drawItem(ctx, it)
-    }
+      if (b[2] < vx0 || b[0] > vx1 || b[3] < vy0 || b[1] > vy1) return false
+      return !(b[2] - b[0] < tiny && b[3] - b[1] < tiny)
+    })
   }
 
   #saveSnap() {
@@ -498,11 +601,22 @@ export class Board {
 
   #drawLive() {
     const ctx = this.lctx
+    const now = performance.now()
     ctx.setTransform(1, 0, 0, 1, 0, 0)
     ctx.clearRect(0, 0, this.live.width, this.live.height)
     this.#worldTransform(ctx)
     for (const l of this.lives.values()) this.#drawLiveStroke(ctx, l)
-    if (this.current) this.#drawLiveStroke(ctx, this.current)
+    if (this.current) {
+      const pts = this.#currentPoints()
+      for (const p of this.current.b === 'lasso' ? [pts] : this.#copies(pts)) {
+        if (this.current.shape && this.shapeFill && this.shape !== 'line') {
+          ctx.globalAlpha = 0.35
+          drawItem(ctx, { k: 'f', pat: this.pattern, c: this.current.c, sc: 36 / this.view.s, p }, true)
+          ctx.globalAlpha = 1
+        }
+        this.#drawLiveStroke(ctx, { ...this.current, p })
+      }
+    }
 
     // sticker-voorbeeld onder de muis/pen
     if (this.hover && this.tool === 'sticker' && !this.current) {
@@ -512,11 +626,16 @@ export class Board {
       ctx.globalAlpha = 1
     }
 
-    // cursors (schermcoördinaten)
+    // schermcoördinaten vanaf hier
     const d = this.dpr
     ctx.setTransform(d, 0, 0, d, 0, 0)
+    this.#drawMirrorGuides(ctx)
+
     ctx.textBaseline = 'middle'
-    for (const c of this.cursors.values()) {
+    const justDone = new Set(this.recent.map((r) => r.u))
+    for (const [u, c] of this.cursors) {
+      // Wie tekent, krijgt een naamlabel aan zijn/haar lijn; dan geen dubbel cursorlabel.
+      if ((this.drawing.get(u) ?? 0) > now) continue
       const [sx, sy] = this.toScreen(c.x, c.y)
       if (sx < -40 || sy < -40 || sx > this.w + 40 || sy > this.h + 40) continue
       ctx.fillStyle = c.color
@@ -530,15 +649,123 @@ export class Board {
       ctx.strokeStyle = '#fff'
       ctx.lineWidth = 2
       ctx.stroke()
-      const label = `${c.avatar} ${c.name}`
-      ctx.font = `800 14px "Baloo 2", system-ui, sans-serif`
-      const tw = ctx.measureText(label).width + 16
-      ctx.fillStyle = c.color
-      roundRect(ctx, sx + 14, sy + 14, tw, 24, 12)
-      ctx.fill()
-      ctx.fillStyle = contrastText(c.color)
-      ctx.fillText(label, sx + 22, sy + 27)
+      if (!justDone.has(u)) this.#tag(ctx, sx + 14, sy + 14, `${c.avatar} ${c.name}`, c.color, 1)
     }
+
+    // Wie tekent er? Een naamlabel aan het puntje van elke lijn die nu getekend wordt.
+    this.edgeHits = []
+    const dots = '.'.repeat(1 + (Math.floor(now / 350) % 3))
+    for (const l of this.lives.values()) {
+      if (l.p.length < 2) continue
+      const u = this.#user(l.u)
+      const wx = l.p[l.p.length - 2], wy = l.p[l.p.length - 1]
+      const [sx, sy] = this.toScreen(wx, wy)
+      if (this.#onScreen(sx, sy)) {
+        const bob = Math.sin(now / 160) * 2
+        this.#tag(ctx, sx + 12, sy + 10 + bob, `${u.avatar} ${u.name} tekent${dots}`, u.color, 1)
+      } else {
+        this.#edgeMarker(ctx, sx, sy, wx, wy, u)
+      }
+    }
+    for (const r of this.recent) {
+      const [sx, sy] = this.toScreen(r.x, r.y)
+      if (!this.#onScreen(sx, sy)) continue
+      const u = this.#user(r.u)
+      const a = Math.min(1, 2.6 - (now - r.t) / 1000)
+      this.#tag(ctx, sx + 12, sy + 10, `${u.avatar} ${u.name} ✓`, u.color, a)
+    }
+  }
+
+  #user(uid) {
+    const u = this.users.find((x) => x.u === uid)
+    return u ?? { u: uid, name: '…', avatar: '🙂', color: '#888888' }
+  }
+
+  #onScreen(sx, sy) {
+    return sx > 0 && sy > 0 && sx < this.w && sy < this.h
+  }
+
+  /** Een gekleurd naamlabel (pilvorm) op schermcoördinaten. */
+  #tag(ctx, x, y, text, color, alpha, alignEnd = false) {
+    ctx.save()
+    ctx.globalAlpha = Math.max(0, alpha)
+    ctx.font = `800 15px "Baloo 2", system-ui, sans-serif`
+    ctx.textBaseline = 'middle'
+    const tw = ctx.measureText(text).width + 18
+    if (alignEnd) x -= tw
+    x = Math.max(4, Math.min(x, this.w - tw - 4))
+    ctx.shadowColor = 'rgba(0,0,0,.25)'
+    ctx.shadowBlur = 6
+    ctx.shadowOffsetY = 2
+    ctx.fillStyle = color
+    roundRect(ctx, x, y, tw, 26, 13)
+    ctx.fill()
+    ctx.shadowColor = 'transparent'
+    ctx.strokeStyle = 'rgba(255,255,255,.9)'
+    ctx.lineWidth = 2
+    ctx.stroke()
+    ctx.fillStyle = contrastText(color)
+    ctx.fillText(text, x + 9, y + 14)
+    ctx.restore()
+  }
+
+  /** Iemand tekent buiten beeld: een rondje met zijn/haar dier aan de rand, met pijltje. */
+  #edgeMarker(ctx, sx, sy, wx, wy, u) {
+    // binnen de knoppenbalken blijven (gereedschap links, kleuren rechts)
+    const mL = 120, mR = this.w - 125, mT = 100, mB = this.h - 40
+    const cx = this.w / 2, cy = this.h / 2
+    const dx = sx - cx, dy = sy - cy
+    const t = Math.min(dx > 0 ? (mR - cx) / dx : dx < 0 ? (mL - cx) / dx : Infinity, dy > 0 ? (mB - cy) / dy : dy < 0 ? (mT - cy) / dy : Infinity)
+    const x = cx + dx * t, y = cy + dy * t
+    const a = Math.atan2(dy, dx)
+    ctx.save()
+    ctx.fillStyle = u.color
+    ctx.translate(x, y)
+    ctx.save()
+    ctx.rotate(a)
+    ctx.beginPath()
+    ctx.moveTo(34, 0)
+    ctx.lineTo(20, -10)
+    ctx.lineTo(20, 10)
+    ctx.closePath()
+    ctx.fill()
+    ctx.restore()
+    ctx.beginPath()
+    ctx.arc(0, 0, 22, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.strokeStyle = '#fff'
+    ctx.lineWidth = 3
+    ctx.stroke()
+    ctx.font = `22px ${EMOJI_FONT}`
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillText(u.avatar, 0, 1)
+    ctx.restore()
+    const right = x > this.w / 2
+    this.#tag(ctx, right ? x - 28 : x + 28, y - 13, `${u.name} tekent daar`, u.color, 1, right)
+    this.edgeHits.push({ x, y, wx, wy })
+  }
+
+  #drawMirrorGuides(ctx) {
+    if (!this.mirror || !(BRUSH_TOOLS.includes(this.tool) || this.tool === 'shape')) return
+    const cx = this.w / 2, cy = this.h / 2, R = Math.hypot(this.w, this.h)
+    ctx.save()
+    ctx.strokeStyle = 'rgba(168,85,247,.45)'
+    ctx.lineWidth = 2
+    ctx.setLineDash([10, 8])
+    ctx.beginPath()
+    const angles = this.mirror === 2 ? [Math.PI / 2] : this.mirror === 4 ? [0, Math.PI / 2] : [0, 1, 2].map((k) => Math.PI / 2 + (k * Math.PI) / 3)
+    for (const a of angles) {
+      ctx.moveTo(cx - Math.cos(a) * R, cy - Math.sin(a) * R)
+      ctx.lineTo(cx + Math.cos(a) * R, cy + Math.sin(a) * R)
+    }
+    ctx.stroke()
+    ctx.setLineDash([])
+    ctx.fillStyle = 'rgba(168,85,247,.8)'
+    ctx.beginPath()
+    ctx.arc(cx, cy, 6, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.restore()
   }
 
   #drawLiveStroke(ctx, l) {
@@ -610,9 +837,21 @@ export class Board {
   #down(e) {
     if (!this.active) return
     e.preventDefault()
-    this.live.setPointerCapture?.(e.pointerId)
+    try {
+      this.live.setPointerCapture(e.pointerId)
+    } catch {
+      /* pointer al weg (bv. heel kort tikje): niet erg */
+    }
     if (e.pointerType === 'pen') this.penSeen = true
     const p = this.#pos(e)
+    // Tik op een pijltje aan de rand: vlieg naar wie daar tekent.
+    const hit = this.edgeHits.find((h) => Math.hypot(h.x - p.x, h.y - p.y) < 30)
+    if (hit && this.pointers.size === 0) {
+      const s = Math.max(this.view.s, 0.3)
+      this.fit([hit.wx - this.w / 3 / s, hit.wy - this.h / 3 / s, hit.wx + this.w / 3 / s, hit.wy + this.h / 3 / s])
+      sound.join()
+      return
+    }
     this.pointers.set(e.pointerId, { ...p, type: e.pointerType })
     this.#closeSheetsOnDraw()
 
@@ -726,11 +965,28 @@ export class Board {
 
   // ── Tools ────────────────────────────────────────────────────────────────
   #stickerPx() {
-    return 40 + this.size * 3
+    return isColoringPage(this.sticker) ? 320 + this.size * 4 : 40 + this.size * 3
   }
 
   #toolDown(p) {
     const [wx, wy] = this.toWorld(p.x, p.y)
+    // Het spiegelpunt is het midden van het scherm op het moment dat je begint.
+    this.mirrorCenter = this.toWorld(this.w / 2, this.h / 2)
+    if (this.tool === 'shape') {
+      this.current = {
+        sid: Math.random().toString(36).slice(2, 10),
+        shape: this.shape,
+        b: this.lastBrush,
+        c: this.color,
+        w: Math.max(this.size / this.view.s, 0.05),
+        sd: (Math.random() * 1e9) >>> 0,
+        a: [wx, wy],
+        z: [wx, wy],
+        p: [],
+      }
+      this.dirtyLive = true
+      return
+    }
     if (BRUSH_TOOLS.includes(this.tool) || this.tool === 'fill') {
       const isFill = this.tool === 'fill'
       const sid = Math.random().toString(36).slice(2, 10)
@@ -746,6 +1002,7 @@ export class Board {
       }
       this.#addPoint(p.x, p.y)
       if (this.tool === 'balls') sound.boing()
+      if (this.tool === 'glitter') sound.sparkle()
       return
     }
     if (this.tool === 'sticker') {
@@ -769,6 +1026,11 @@ export class Board {
   #addPoint(sx, sy) {
     const c = this.current
     const [wx, wy] = this.toWorld(sx, sy)
+    if (c.shape) {
+      c.z = [wx, wy]
+      this.dirtyLive = true
+      return
+    }
     const n = c.p.length
     if (n >= 2) {
       const dx = (wx - c.p[n - 2]) * this.view.s, dy = (wy - c.p[n - 1]) * this.view.s
@@ -812,7 +1074,90 @@ export class Board {
       }
       return
     }
-    this.#commit({ id: this.#newId(), k: 's', b: c.b, c: c.c, w: c.w, sd: c.sd, p: c.p }, c.sid)
+    const copies = this.#copies(c.shape ? this.#shapePoints(c) : c.p)
+    const raws = []
+    if (c.shape && this.shapeFill && c.shape !== 'line') {
+      const color = this.pattern === 'balls' ? nearestBall(c.c) : c.c
+      for (const p of copies) raws.push({ id: this.#newId(), k: 'f', pat: this.pattern, c: color, sc: 36 / this.view.s, p })
+    }
+    for (const p of copies) raws.push({ id: this.#newId(), k: 's', b: c.b, c: c.c, w: c.w, sd: c.sd, p })
+    if (!c.shape) this.net.volatile({ t: 'liveEnd', sid: c.sid })
+    this.#commitMany(raws, c.shape ? undefined : c.sid)
+    if (copies.length > 1) award('spiegel')
+    if (c.shape) {
+      sound.pop()
+      if (count('shapes') >= 5) award('vormen')
+    }
+  }
+
+  /** De punten van wat je nu tekent (bij een vorm: berekend uit begin- en eindpunt). */
+  #currentPoints() {
+    const c = this.current
+    return c.shape ? this.#shapePoints(c) : c.p
+  }
+
+  /** Spiegelkopieën rond het spiegelpunt (inclusief het origineel). */
+  #copies(p) {
+    const n = this.mirror
+    if (!n || !this.mirrorCenter || p.length < 2) return [p]
+    const [cx, cy] = this.mirrorCenter
+    const map = (fn) => {
+      const out = new Array(p.length)
+      for (let i = 0; i < p.length; i += 2) {
+        const [x, y] = fn(p[i] - cx, p[i + 1] - cy)
+        out[i] = Math.round((x + cx) * 10) / 10
+        out[i + 1] = Math.round((y + cy) * 10) / 10
+      }
+      return out
+    }
+    if (n === 2) return [p, map((x, y) => [-x, y])]
+    if (n === 4) return [p, map((x, y) => [-x, y]), map((x, y) => [x, -y]), map((x, y) => [-x, -y])]
+    const out = [p]
+    for (let k = 1; k < n; k++) {
+      const a = (k * 2 * Math.PI) / n, ca = Math.cos(a), sa = Math.sin(a)
+      out.push(map((x, y) => [x * ca - y * sa, x * sa + y * ca]))
+    }
+    return out
+  }
+
+  /** Punten voor een vorm tussen begin- (a) en eindpunt (z). Een tikje = een vorm op standaardgrootte. */
+  #shapePoints(c) {
+    let [x0, y0] = c.a, [x1, y1] = c.z
+    if (Math.hypot(x1 - x0, y1 - y0) * this.view.s < 12) {
+      const r = 70 / this.view.s
+      if (c.shape === 'line') [x0, y0, x1, y1] = [x0 - r, y0, x0 + r, y0]
+      else [x0, y0, x1, y1] = [x0 - r, y0 - r, x0 + r, y0 + r]
+    }
+    if (c.shape === 'line') return densify([x0, y0, x1, y1], false)
+    const l = Math.min(x0, x1), r = Math.max(x0, x1), t = Math.min(y0, y1), b = Math.max(y0, y1)
+    const w = r - l, h = b - t, mx = (l + r) / 2, my = (t + b) / 2
+    const pts = []
+    if (c.shape === 'circle') {
+      for (let i = 0; i <= 72; i++) {
+        const a = (i / 72) * Math.PI * 2
+        pts.push(mx + Math.cos(a) * w / 2, my + Math.sin(a) * h / 2)
+      }
+      return round(pts)
+    }
+    if (c.shape === 'heart') {
+      for (let i = 0; i <= 90; i++) {
+        const a = (i / 90) * Math.PI * 2
+        const x = 16 * Math.sin(a) ** 3
+        const y = -(13 * Math.cos(a) - 5 * Math.cos(2 * a) - 2 * Math.cos(3 * a) - Math.cos(4 * a))
+        pts.push(mx + (x / 34) * w, t + ((y + 12) / 29) * h)
+      }
+      return round(pts)
+    }
+    if (c.shape === 'square') return densify([l, t, r, t, r, b, l, b], true)
+    if (c.shape === 'triangle') return densify([mx, t, r, b, l, b], true)
+    // ster: 5 punten, binnenstraal 45 %
+    const poly = []
+    for (let i = 0; i < 10; i++) {
+      const a = -Math.PI / 2 + (i * Math.PI) / 5
+      const k = i % 2 ? 0.45 : 1
+      poly.push(mx + Math.cos(a) * (w / 2) * k, my + Math.sin(a) * (h / 2) * k + h * 0.05)
+    }
+    return densify(poly, true)
   }
 
   #cancelCurrent() {
@@ -873,6 +1218,83 @@ export class Board {
     setTimeout(() => inp.focus(), 0)
   }
 
+  /** Iemand anders voegde iets toe: naamlabel laten hangen en stickers laten "poppen". */
+  #othersAdded(uid, it) {
+    const now = performance.now()
+    let x, y
+    if (it.k === 's' || it.k === 'f') [x, y] = [it.p[it.p.length - 2], it.p[it.p.length - 1]]
+    else [x, y] = [it.x, it.y]
+    // Spiegelkopieën komen vlak na elkaar: één label per persoon is genoeg.
+    if (!this.recent.some((r) => r.u === uid && now - r.t < 300)) this.recent.push({ u: uid, x, y, t: now })
+    this.drawing.delete(uid)
+    if (it.k === 'k') {
+      const [sx, sy] = this.toScreen(it.x, it.y)
+      if (this.#onScreen(sx, sy)) this.#sparks(sx, sy)
+    }
+  }
+
+  // ── Tekenuitdaging voor de hele ruimte ────────────────────────────────────
+  #sendChallenge() {
+    if (this.challenge && this.challenge.left > 0) {
+      $('ideaBanner').hidden = false
+      return
+    }
+    this.net.volatile({ t: 'idea', i: Math.floor(Math.random() * IDEAS.length) })
+    award('uitdager')
+  }
+
+  #startChallenge(m) {
+    this.#endChallenge()
+    const idea = IDEAS[m.i % IDEAS.length]
+    const el = $('ideaBanner')
+    el.innerHTML = ''
+    const who = document.createElement('div')
+    who.className = 'idea-who'
+    who.textContent = m.u === this.uid ? '💡 Jouw uitdaging voor iedereen:' : `💡 Uitdaging van ${m.avatar} ${m.name}:`
+    const text = document.createElement('div')
+    text.className = 'idea-text'
+    text.textContent = idea
+    const timer = document.createElement('div')
+    timer.className = 'idea-timer'
+    el.append(who, text, timer)
+    el.hidden = false
+    el.classList.remove('done')
+    sound.join()
+    this.challenge = { left: CHALLENGE_SECONDS, timer }
+    const tick = () => {
+      const c = this.challenge
+      if (!c) return
+      const m2 = Math.floor(c.left / 60), s2 = String(c.left % 60).padStart(2, '0')
+      c.timer.textContent = `⏱️ ${m2}:${s2}`
+      c.timer.classList.toggle('hurry', c.left <= 10)
+      if (c.left <= 10 && c.left > 0) sound.tick2()
+      if (c.left <= 0) {
+        this.#finishChallenge()
+        return
+      }
+      c.left--
+      c.handle = setTimeout(tick, 1000)
+    }
+    tick()
+  }
+
+  #finishChallenge() {
+    const el = $('ideaBanner')
+    el.hidden = false
+    el.classList.add('done')
+    this.challenge.timer.textContent = '⏰ Tijd om! Kijk wat iedereen tekende 👀'
+    confetti(120)
+    sound.fanfare()
+    if (!this.current && !this.gesture) this.home()
+    this.challenge.handle = setTimeout(() => this.#endChallenge(), 6000)
+  }
+
+  #endChallenge() {
+    if (this.challenge) clearTimeout(this.challenge.handle)
+    this.challenge = null
+    $('ideaBanner').hidden = true
+  }
+
   // ── Effecten ─────────────────────────────────────────────────────────────
   #sparks(x, y) {
     const fx = $('fx')
@@ -921,7 +1343,7 @@ export class Board {
     const view = { s, x: (b[0] + b[2]) / 2 - width / 2 / s, y: (b[1] + b[3]) / 2 - height / 2 / s }
     ctx.setTransform(s, 0, 0, s, -view.x * s, -view.y * s)
     drawBackground(ctx, this.room?.bg ?? 'wit', view, width, height)
-    for (const it of this.items.values()) drawItem(ctx, it)
+    drawItems(ctx, this.items.values())
     return cv
   }
 
@@ -929,6 +1351,7 @@ export class Board {
     const b = [this.view.x, this.view.y, this.view.x + this.w / this.view.s, this.view.y + this.h / this.view.s]
     const cv = this.#renderTo(Math.round(this.w * 2), Math.round(this.h * 2), b)
     sound.camera()
+    award('fotograaf')
     const flash = document.createElement('div')
     flash.style.cssText = 'position:absolute;inset:0;background:#fff;opacity:.8;transition:opacity .4s'
     $('fx').appendChild(flash)
@@ -1009,7 +1432,7 @@ export class Board {
     const grid = $('stickerGrid')
     const fillGrid = (tab) => {
       grid.innerHTML = ''
-      const list = tab === 'emoji' ? EMOJIS.map((e) => 'e:' + e) : STICKERS
+      const list = tab === 'emoji' ? EMOJIS.map((e) => 'e:' + e) : tab === 'kleurplaat' ? STICKERS.filter(isColoringPage) : STICKERS.filter((x) => !isColoringPage(x))
       for (const id of list) {
         const b = document.createElement('button')
         b.dataset.sticker = id
@@ -1033,7 +1456,8 @@ export class Board {
           // Blad dicht zodat je meteen overal kan plakken; ⭐ opnieuw aantikken opent het weer.
           $('stickerSheet').hidden = true
           this.#updateStickerTool()
-          if (!this.stickerHintShown) this.toast('Tik op het blad om te plakken!')
+          if (isColoringPage(id)) this.toast('🖍️ Plak de kleurplaat en kleur hem in. De lijnen blijven altijd bovenaan!')
+          else if (!this.stickerHintShown) this.toast('Tik op het blad om te plakken!')
           this.stickerHintShown = true
         }
         grid.appendChild(b)
@@ -1064,6 +1488,41 @@ export class Board {
       row.appendChild(b)
     }
 
+    // vormen
+    const srow = $('shapeRow')
+    for (const sh of SHAPES) {
+      const b = document.createElement('button')
+      b.dataset.shape = sh.id
+      b.title = sh.label
+      b.textContent = sh.icon
+      b.onclick = () => {
+        this.shape = sh.id
+        srow.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b))
+        sound.tick()
+      }
+      b.classList.toggle('on', sh.id === this.shape)
+      srow.appendChild(b)
+    }
+    $('shapeFill').onchange = (e) => {
+      this.shapeFill = e.target.checked
+      sound.tick()
+    }
+
+    $('mirrorBtn').onclick = () => {
+      const i = (MIRRORS.findIndex((m) => m.n === this.mirror) + 1) % MIRRORS.length
+      this.mirror = MIRRORS[i].n
+      $('mirrorBtn').querySelector('small').textContent = MIRRORS[i].label
+      $('mirrorBtn').classList.toggle('on', this.mirror > 0)
+      if (this.mirror && !BRUSH_TOOLS.includes(this.tool) && this.tool !== 'shape') this.setTool(this.lastBrush)
+      // Pas na even wachten melden, zodat snel doorklikken geen stapel meldingen geeft.
+      clearTimeout(this.mirrorToast)
+      this.mirrorToast = setTimeout(() => {
+        if (this.mirror) this.toast(this.mirror === 2 ? '🦋 Vlinder: wat je tekent, wordt gespiegeld!' : this.mirror === 4 ? '🦋 Vier keer gespiegeld!' : '✳️ Caleidoscoop: zes keer rondom!')
+      }, 700)
+      this.dirtyLive = true
+      sound.sparkle()
+    }
+
     // reacties
     const rs = $('reactSheet')
     for (const e of REACTIONS) {
@@ -1073,6 +1532,7 @@ export class Board {
         const [x, y] = this.hover ? this.toWorld(this.hover.x, this.hover.y) : this.toWorld(this.w / 2, this.h / 2)
         this.net.volatile({ t: 'react', e, x, y })
         rs.hidden = true
+        if (count('reactions') >= 10) award('fan')
       }
       rs.appendChild(b)
     }
@@ -1084,7 +1544,8 @@ export class Board {
     $('zoomLabel').onclick = () => this.home()
     $('photoBtn').onclick = () => this.photo()
     $('reactBtn').onclick = () => ($('reactSheet').hidden = !$('reactSheet').hidden)
-    $('ideaBtn').onclick = () => this.#idea()
+    $('ideaBtn').onclick = () => this.#sendChallenge()
+    $('ideaBanner').onclick = () => ($('ideaBanner').hidden = true)
     $('fsBtn').onclick = () => this.#toggleFullscreen()
     $('focusBtn').onclick = () => this.#setFocus(true)
     $('unfocusBtn').onclick = () => this.#setFocus(false)
@@ -1105,10 +1566,12 @@ export class Board {
   setTool(id) {
     const again = this.tool === id
     this.tool = id
+    if (BRUSH_TOOLS.includes(id)) this.lastBrush = id
     document.querySelectorAll('.tool').forEach((b) => b.classList.toggle('on', b.dataset.tool === id))
     $('stickerSheet').hidden = id !== 'sticker' || (again && !$('stickerSheet').hidden)
     $('fillSheet').hidden = id !== 'fill'
-    if (id === 'fill') this.#updatePatternPreviews()
+    $('shapeSheet').hidden = id !== 'shape' || (again && !$('shapeSheet').hidden)
+    if (id === 'fill' || id === 'shape') this.#updatePatternPreviews()
     this.live.style.cursor = id === 'hand' ? 'grab' : id === 'text' ? 'text' : 'crosshair'
     this.dirtyLive = true
     sound.tick()
@@ -1162,21 +1625,6 @@ export class Board {
     $('reactSheet').hidden = true
   }
 
-  #idea() {
-    const el = $('ideaBanner')
-    let idea
-    do idea = IDEAS[Math.floor(Math.random() * IDEAS.length)]
-    while (idea === el.textContent && IDEAS.length > 1)
-    el.textContent = '💡 ' + idea
-    el.hidden = false
-    el.style.animation = 'none'
-    void el.offsetWidth
-    el.style.animation = ''
-    sound.join()
-    clearTimeout(this.ideaTimer)
-    this.ideaTimer = setTimeout(() => (el.hidden = true), 7000)
-  }
-
   #toggleFullscreen() {
     const d = document
     if (d.fullscreenElement || d.webkitFullscreenElement) {
@@ -1202,6 +1650,7 @@ export class Board {
       const b = document.createElement('button')
       b.style.background = u.color
       b.textContent = u.avatar
+      b.dataset.u = u.u
       b.title = u.u === this.uid ? `${u.name} (jij)` : `${u.name}: tik om erheen te gaan`
       b.onclick = () => {
         const c = this.cursors.get(u.u)
@@ -1253,6 +1702,25 @@ function nearestBall(hex) {
   return best.hex
 }
 
+function round(pts) {
+  return pts.map((v) => Math.round(v * 10) / 10)
+}
+
+/** Extra punten op elke zijde, zodat het afronden bij het tekenen de hoeken niet wegpoetst. */
+function densify(poly, closed) {
+  const out = []
+  const n = poly.length / 2
+  const last = closed ? n : n - 1
+  for (let i = 0; i < last; i++) {
+    const x0 = poly[i * 2], y0 = poly[i * 2 + 1]
+    const j = (i + 1) % n
+    const x1 = poly[j * 2], y1 = poly[j * 2 + 1]
+    for (let k = 0; k < 8; k++) out.push(x0 + ((x1 - x0) * k) / 8, y0 + ((y1 - y0) * k) / 8)
+  }
+  out.push(closed ? poly[0] : poly[poly.length - 2], closed ? poly[1] : poly[poly.length - 1])
+  return round(out)
+}
+
 function segDist2(px, py, x0, y0, x1, y1) {
   const dx = x1 - x0, dy = y1 - y0
   const l2 = dx * dx + dy * dy
@@ -1264,7 +1732,7 @@ function segDist2(px, py, x0, y0, x1, y1) {
 
 function hitTest(it, x, y, r) {
   if (it.k === 's') {
-    const mult = { marker: 1.1, neon: 1.5, spray: 1.3, balls: 0.6 }[it.b] ?? 0.5
+    const mult = { marker: 1.1, neon: 1.5, spray: 1.3, balls: 0.6, glitter: 1 }[it.b] ?? 0.5
     const lim = (it.w * mult + r) ** 2
     const p = it.p
     if (p.length === 2) return (p[0] - x) ** 2 + (p[1] - y) ** 2 <= lim
