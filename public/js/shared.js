@@ -18,6 +18,7 @@ export const STICKERS = [
   'bal-oranje', 'bal-geel', 'bal-rood', 'bal-blauw', 'bal-wit',
   'logo', 'sint-michiels', 'veld', 'beker', 'medaille', 'fluit', 'trui-groen', 'trui-rood',
   'trui-blauw', 'doelpunt', 'vuurbal', 'scorebord', 'speler', 'wimpel', 'supporter',
+  'sjaal', 'kapitein', 'stopwatch',
   'ster', 'hart', 'bliksem', 'kroon',
   // kleurplaten: enkel lijnen, worden altijd bovenop getekend zodat je eronder kan inkleuren
   'kp-bal', 'kp-speler', 'kp-beker', 'kp-trui', 'kp-leeuw', 'kp-veld',

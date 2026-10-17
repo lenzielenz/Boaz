@@ -579,7 +579,7 @@ input { font-family: inherit; }
   .tools, .palette { width: 62px; }
   .tool { height: 52px; font-size: 1.45rem; }
   .tool small { display: none; }
-  .tb-group.zoom, #ideaBtn, #photoBtn, #soundBtn, #focusBtn, .room-title { display: none; }
+  .room-title { display: none; }
   .topbar { gap: 6px; }
   .people { display: none; }
   .sheet { left: calc(76px + var(--safe-l)); right: calc(76px + var(--safe-r)); }
@@ -672,3 +672,137 @@ input { font-family: inherit; }
   .medal-chip { padding: 6px 12px; }
   .idea-text { font-size: 1.05rem; }
 }
+
+/* ── Rustige indeling: minder knoppen, krachtbal vooraan ─────── */
+.tool { height: 72px; }
+.tool-icon { font-size: 1.9rem; line-height: 1; display: grid; place-items: center; height: 36px; }
+.tool-icon img { width: 34px; height: 34px; }
+.tool[data-tool='draw']::after {
+  content: '▾';
+  position: absolute;
+  right: 6px;
+  top: 4px;
+  font-size: 0.8rem;
+  color: #47574f;
+}
+.big-undo { font-size: 1.7rem; width: 54px; }
+
+.menu-sheet {
+  position: absolute;
+  top: calc(68px + var(--safe-t));
+  right: calc(8px + var(--safe-r));
+  z-index: 6;
+  width: 250px;
+  background: #fff;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  animation: sheetIn 0.18s ease-out;
+}
+.menu-sheet > button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 0;
+  background: transparent;
+  border-radius: 14px;
+  padding: 9px 12px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  text-align: left;
+}
+.menu-sheet > button:hover, .menu-sheet > button:focus-visible { background: #eef3f1; }
+.menu-sheet > button span { font-size: 1.35rem; width: 28px; text-align: center; }
+.menu-sheet > button:disabled { opacity: 0.4; }
+.menu-row { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 4px 0; }
+.menu-row button { border: 0; background: #eef3f1; border-radius: 12px; width: 48px; height: 40px; font-size: 1.2rem; }
+.menu-row span { font-weight: 800; min-width: 56px; text-align: center; }
+
+.pal-label { font-size: 0.72rem; font-weight: 800; color: #47574f; text-transform: uppercase; letter-spacing: 0.02em; }
+.swatches.balls { padding-bottom: 8px; border-bottom: 2px solid var(--panel-line); }
+.swatch.ball { background: transparent; border: 0; box-shadow: none; width: 30px; height: 30px; padding: 0; }
+.swatch.ball img { width: 100%; height: 100%; display: block; pointer-events: none; }
+.swatch.ball.on { box-shadow: 0 0 0 3px var(--ink); border-radius: 50%; }
+.swatches.balls .swatch:last-child { grid-column: 1 / -1; justify-self: center; }
+
+.sizes { display: flex; flex-direction: column; gap: 4px; flex: none; }
+.sizes button { width: 52px; height: 40px; border: 0; border-radius: 12px; background: transparent; display: grid; place-items: center; }
+.sizes button span { display: block; border-radius: 50%; }
+.sizes button.on { background: #dcfff4; box-shadow: inset 0 0 0 3px var(--green); }
+
+.dock {
+  position: absolute;
+  left: 50%;
+  bottom: calc(10px + var(--safe-b));
+  transform: translateX(-50%);
+  max-width: calc(100% - 200px);
+  display: flex;
+  gap: 4px;
+  padding: 6px 8px;
+  background: var(--panel);
+  border-radius: 999px;
+  box-shadow: var(--shadow);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.dock::-webkit-scrollbar { display: none; }
+.dock button {
+  flex: none;
+  width: 52px;
+  height: 52px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  padding: 5px;
+  transition: transform 0.12s;
+}
+.dock button img { width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
+.dock button:hover { transform: translateY(-4px) scale(1.08); }
+.dock button:active { transform: scale(0.9); }
+.dock button.on { background: #dcfff4; box-shadow: inset 0 0 0 3px var(--green); }
+.dock .dock-more { font-size: 1.6rem; font-weight: 800; color: #47574f; background: #eef3f1; }
+
+.brush-row { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; }
+.brush-row button {
+  width: 76px;
+  height: 76px;
+  border: 3px solid transparent;
+  border-radius: 18px;
+  background: #f4f7f6;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+.brush-row button span { font-size: 2rem; line-height: 1; }
+.brush-row button img { width: 34px; height: 34px; }
+.brush-row button small { font-weight: 800; font-size: 0.75rem; color: #47574f; }
+.brush-row button.on { border-color: var(--green); background: #dcfff4; }
+
+/* Medaille niet midden op de tekening, maar klein bovenaan */
+.medal-pop { top: calc(72px + var(--safe-t)); padding: 8px 20px 8px 12px; border-radius: 22px; }
+.medal-pop .medal-icon { font-size: 2.2rem; }
+.medal-pop b { font-size: 1.2rem; }
+
+@media (max-width: 640px) {
+  .tool { height: 56px; }
+  .tool-icon { font-size: 1.5rem; }
+  .dock { max-width: calc(100% - 150px); bottom: calc(8px + var(--safe-b)); }
+  .dock button { width: 44px; height: 44px; }
+  .menu-sheet { width: calc(100% - 16px); }
+  .brush-row button { width: 64px; height: 64px; }
+  .sizes button { width: 40px; }
+  .swatch.ball { width: 26px; height: 26px; }
+  .swatches.balls { grid-template-columns: 1fr; }
+  .swatches.balls .swatch:last-child { grid-column: auto; }
+}
+.sheet.small { width: max-content; }
+@media (max-width: 640px) { .sheet.small { width: auto; left: calc(76px + var(--safe-l)); right: calc(76px + var(--safe-r)); transform: none; max-width: none; } }
+@media (max-width: 640px) { .pal-label { display: none; } }
+/* Meldingen en medailles boven de krachtbal-balk, niet over de tekening of de uitdaging */
+.toasts { bottom: calc(84px + var(--safe-b)); }
+.medal-pop { top: auto; bottom: calc(140px + var(--safe-b)); }

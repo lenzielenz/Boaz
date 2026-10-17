@@ -150,6 +150,26 @@ const SVGS = {
     <text x="60" y="30" font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="15" fill="#dc2626" text-anchor="middle">HUP HUP</text>
     <text x="60" y="50" font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="15" fill="#2563eb" text-anchor="middle">HUP!</text>
     <rect x="56" y="60" width="8" height="18" fill="#6b4423"/>`),
+  sjaal: svg('0 0 140 70', `
+    <defs><pattern id="sj" width="20" height="20" patternUnits="userSpaceOnUse" patternTransform="rotate(0)">
+      <rect width="10" height="20" fill="#06d6a0"/><rect x="10" width="10" height="20" fill="#ffd166"/></pattern></defs>
+    <rect x="14" y="16" width="112" height="34" rx="6" fill="#06140d"/>
+    <rect x="14" y="16" width="16" height="34" fill="url(#sj)"/><rect x="110" y="16" width="16" height="34" fill="url(#sj)"/>
+    <g stroke="#ffd166" stroke-width="3" stroke-linecap="round">
+      <path d="M17 50 v10 M23 50 v12 M29 50 v10 M111 50 v10 M117 50 v12 M123 50 v10"/></g>
+    <text x="70" y="39" font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="15" fill="#ffd166" text-anchor="middle">KRACHTBAL</text>`),
+  kapitein: svg('0 0 100 100', `
+    <path d="M14 34 Q50 22 86 34 L86 66 Q50 54 14 66 Z" fill="#ffd166" stroke="#c98a00" stroke-width="4" stroke-linejoin="round"/>
+    <circle cx="50" cy="46" r="17" fill="#06140d"/>
+    <text x="50" y="55" font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="26" fill="#ffd166" text-anchor="middle">C</text>`),
+  stopwatch: svg('0 0 100 100', `
+    <rect x="42" y="4" width="16" height="10" rx="3" fill="#5c6470"/>
+    <rect x="72" y="16" width="10" height="8" rx="2" fill="#5c6470" transform="rotate(40 77 20)"/>
+    <circle cx="50" cy="56" r="38" fill="#fff" stroke="#06d6a0" stroke-width="7"/>
+    <path d="M50 56 L50 28" stroke="#dc2626" stroke-width="5" stroke-linecap="round"/>
+    <path d="M50 56 L68 66" stroke="#06140d" stroke-width="5" stroke-linecap="round"/>
+    <circle cx="50" cy="56" r="5" fill="#06140d"/>
+    <g fill="#06140d"><circle cx="50" cy="24" r="2.5"/><circle cx="82" cy="56" r="2.5"/><circle cx="50" cy="88" r="2.5"/><circle cx="18" cy="56" r="2.5"/></g>`),
   ster: svg('0 0 100 100', `<path d="M50 4 L63 36 L97 38 L70 60 L80 94 L50 74 L20 94 L30 60 L3 38 L37 36 Z" fill="#ffd166" stroke="#e8a400" stroke-width="4" stroke-linejoin="round"/><ellipse cx="42" cy="40" rx="8" ry="5" fill="#fff" opacity=".6"/>`),
   hart: svg('0 0 100 100', `<path d="M50 90 Q8 60 8 34 Q8 10 30 10 Q44 10 50 26 Q56 10 70 10 Q92 10 92 34 Q92 60 50 90 Z" fill="#ff4d6d" stroke="#c9184a" stroke-width="4"/><ellipse cx="30" cy="30" rx="9" ry="6" fill="#fff" opacity=".55"/>`),
   bliksem: svg('0 0 100 100', `<path d="M58 4 L18 56 H46 L38 96 L84 38 H54 Z" fill="#ffd60a" stroke="#f08c00" stroke-width="4" stroke-linejoin="round"/>`),
@@ -220,13 +240,14 @@ export const STICKER_LABELS = {
   logo: 'Krachtbal Live', 'sint-michiels': 'Sint-Michiels', veld: 'Krachtbalveld', beker: 'Beker', medaille: 'Medaille',
   fluit: 'Scheidsrechter', 'trui-groen': 'Trui', 'trui-rood': 'Trui', 'trui-blauw': 'Trui', doelpunt: 'Doelpunt!',
   vuurbal: 'Krachtschot', scorebord: 'Scorebord', speler: 'Speler', wimpel: 'Wimpel', supporter: 'Supporter',
+  sjaal: 'Supporterssjaal', kapitein: 'Kapiteinsband', stopwatch: 'Speeltijd',
   ster: 'Ster', hart: 'Hart', bliksem: 'Bliksem', kroon: 'Kroon',
   'kp-bal': 'Kleurplaat bal', 'kp-speler': 'Kleurplaat speler', 'kp-beker': 'Kleurplaat beker',
   'kp-trui': 'Kleurplaat trui', 'kp-leeuw': 'Kleurplaat mascotte', 'kp-veld': 'Kleurplaat veld',
 }
 
 /** Verhouding breedte/hoogte per sticker (voor stickers die niet vierkant zijn). */
-export const STICKER_ASPECT = { veld: 2, 'kp-veld': 2, doelpunt: 1.4, scorebord: 1.5, wimpel: 1.5, supporter: 1.5, 'sint-michiels': 100 / 120 }
+export const STICKER_ASPECT = { veld: 2, 'kp-veld': 2, sjaal: 2, doelpunt: 1.4, scorebord: 1.5, wimpel: 1.5, supporter: 1.5, 'sint-michiels': 100 / 120 }
 
 const images = new Map()
 const listeners = new Set()

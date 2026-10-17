@@ -14,28 +14,36 @@ import { confetti } from './fx.js'
 
 const $ = (id) => document.getElementById(id)
 
-const COLORS = [
-  '#111827', '#ffffff', '#9ca3af', '#7c4a1e', '#ef4444', '#f97316', '#facc15', '#84cc16',
-  '#22c55e', '#06d6a0', '#06b6d4', '#3b82f6', '#2563eb', '#a855f7', '#ec4899', '#fda4af',
-]
+// De vijf krachtbalkleuren staan apart bovenaan (als echte balletjes), daaronder
+// nog zeven andere kleuren. Genoeg keuze, maar rustig.
+const BALL_COLORS = BALLS.map((b) => ({ hex: b.id === 'wit' ? '#ffffff' : b.hex, ball: 'bal-' + b.id, label: `${b.id} (${b.label})` }))
+const COLORS = ['#111827', '#7c4a1e', '#22c55e', '#06d6a0', '#06b6d4', '#a855f7', '#ec4899']
 
+// Links maar zeven grote knoppen. Alle penselen zitten achter "Tekenen".
 const TOOLS = [
-  { id: 'pen', icon: '✏️', label: 'Potlood' },
-  { id: 'marker', icon: '🖍️', label: 'Stift' },
-  { id: 'neon', icon: '✨', label: 'Neon' },
-  { id: 'rainbow', icon: '🌈', label: 'Regenboog' },
-  { id: 'glitter', icon: '💎', label: 'Glitter' },
-  { id: 'spray', icon: '💨', label: 'Spray' },
-  { id: 'balls', icon: 'ball', label: 'Ballen' },
-  'sep',
+  { id: 'draw', icon: '✏️', label: 'Tekenen' },
+  { id: 'sticker', icon: '⭐', label: 'Stickers' },
   { id: 'shape', icon: '🔷', label: 'Vormen' },
   { id: 'fill', icon: '🪣', label: 'Vullen' },
-  { id: 'sticker', icon: '⭐', label: 'Stickers' },
   { id: 'text', icon: '🔤', label: 'Tekst' },
-  'sep',
   { id: 'eraser', icon: '🧽', label: 'Gom' },
-  { id: 'hand', icon: '✋', label: 'Schuif' },
 ]
+
+const BRUSHES_UI = [
+  { id: 'pen', icon: '✏️', label: 'Potlood' },
+  { id: 'balls', icon: 'ball', label: 'Ballen' },
+  { id: 'marker', icon: '🖍️', label: 'Stift' },
+  { id: 'rainbow', icon: '🌈', label: 'Regenboog' },
+  { id: 'glitter', icon: '💎', label: 'Glitter' },
+  { id: 'neon', icon: '✨', label: 'Neon' },
+  { id: 'spray', icon: '💨', label: 'Spray' },
+]
+
+const SIZES = [5, 12, 26, 50]
+
+// De krachtbal-balk onderaan: wat kinderen het meest willen plakken.
+const DOCK = ['bal-oranje', 'bal-geel', 'bal-rood', 'bal-blauw', 'bal-wit', 'trui-groen', 'beker', 'doelpunt', 'fluit', 'logo']
+
 const BRUSH_TOOLS = ['pen', 'marker', 'neon', 'rainbow', 'glitter', 'spray', 'balls']
 
 const SHAPES = [
@@ -117,10 +125,9 @@ export class Board {
     this.room = null
     this.owner = ''
     this.uid = 0
-    this.me = { name: '', avatar: '', color: '#06d6a0' }
 
     this.tool = 'pen'
-    this.color = '#ef4444'
+    this.color = '#dc2626'
     this.size = 12
     this.sticker = 'bal-rood'
     this.pattern = 'checker'
@@ -229,7 +236,9 @@ export class Board {
         }
         if (this.firstSnapshot) {
           this.firstSnapshot = false
-          this.home(false)
+          // In een volle ruimte meteen naar een vrij plekje, anders alles tonen.
+          if (this.items.size >= 25) this.freeSpot(false)
+          else this.home(false)
         }
         this.dirtyBase = true
         return
@@ -247,10 +256,19 @@ export class Board {
       case 'idea':
         this.#startChallenge(m)
         return
-      case 'hi':
-        this.toast(`${m.avatar} ${m.name} komt meetekenen!`)
-        sound.join()
+      case 'hi': {
+        // Komen er veel kinderen tegelijk binnen, dan één melding i.p.v. tien.
+        this.joinQueue = [...(this.joinQueue ?? []), m]
+        clearTimeout(this.joinTimer)
+        this.joinTimer = setTimeout(() => {
+          const q = this.joinQueue
+          this.joinQueue = []
+          if (q.length === 1) this.toast(`${q[0].avatar} ${q[0].name} komt meetekenen!`)
+          else this.toast(`${q.slice(0, 5).map((x) => x.avatar).join(' ')} ${q.length} kinderen komen meetekenen!`)
+          sound.join()
+        }, 1200)
         return
+      }
       case 'gone': {
         this.cursors.delete(m.u)
         this.drawing.delete(m.u)
@@ -456,7 +474,7 @@ export class Board {
     this.viewDirty = true
     this.lastViewChange = performance.now()
     this.dirtyLive = true
-    $('zoomLabel').textContent = Math.round(this.view.s * 100) + '%'
+    $('zoomPct').textContent = Math.round(this.view.s * 100) + '%'
   }
 
   /** Zet de camera zo dat de rechthoek [x0,y0,x1,y1] mooi in beeld komt. */
@@ -489,6 +507,50 @@ export class Board {
       if (t < 1) requestAnimationFrame(step)
     }
     step()
+  }
+
+  /**
+   * Zoek een leeg stuk blad dicht bij de rest, zodat tien kinderen niet over elkaar
+   * heen tekenen. We zoeken in een spiraal van "schermgrote" vakken rond het midden
+   * van de tekening en nemen het eerste vak waar nog niets staat.
+   */
+  freeSpot(animate = true) {
+    const all = boundsOf(this.items.values(), (it) => this.bounds.get(it.id))
+    if (!all) return this.home(animate)
+    const s = 0.9
+    const cw = Math.max(300, (this.w - 260) / s), ch = Math.max(250, (this.h - 200) / s)
+    const cx = (all[0] + all[2]) / 2, cy = (all[1] + all[3]) / 2
+    const boxes = [...this.bounds.values()]
+    for (const l of this.lives.values()) {
+      for (let i = 0; i < l.p.length; i += 2) boxes.push([l.p[i] - 50, l.p[i + 1] - 50, l.p[i] + 50, l.p[i + 1] + 50])
+    }
+    const free = (r) => !boxes.some((b) => b[0] < r[2] && b[2] > r[0] && b[1] < r[3] && b[3] > r[1])
+    for (let ring = 0; ring <= 14; ring++) {
+      for (let i = -ring; i <= ring; i++) {
+        for (let j = -ring; j <= ring; j++) {
+          if (Math.max(Math.abs(i), Math.abs(j)) !== ring) continue
+          const x = cx + i * cw, y = cy + j * ch
+          const r = [x - cw / 2, y - ch / 2, x + cw / 2, y + ch / 2]
+          if (!free(r)) continue
+          this.fit(r, animate)
+          this.spotFlash = { r, t: performance.now() }
+          this.toast('📍 Hier is plaats voor jou. Teken maar!')
+          return
+        }
+      }
+    }
+    this.home(animate)
+  }
+
+  #goToMine() {
+    const mine = [...this.items.values()].filter((it) => it.o === this.owner)
+    const b = boundsOf(mine, (it) => this.bounds.get(it.id))
+    if (!b) {
+      this.toast('Je hebt hier nog niets getekend ✏️')
+      return
+    }
+    const pad = Math.max(b[2] - b[0], b[3] - b[1]) * 0.15 + 100
+    this.fit([b[0] - pad, b[1] - pad, b[2] + pad, b[3] + pad])
   }
 
   home(animate = true) {
@@ -526,7 +588,7 @@ export class Board {
       }
     }
     // Naamlabels bij wie tekent bewegen (puntjes "tekent…") en vervagen: blijven hertekenen.
-    if (this.recent.length) this.recent = this.recent.filter((r) => now - r.t < 2600)
+    if (this.recent.length) this.recent = this.recent.filter((r) => now - r.t < 1400)
     if (this.lives.size || this.recent.length) this.dirtyLive = true
     if (now - (this.lastPeople ?? 0) > 250) {
       this.lastPeople = now
@@ -649,30 +711,49 @@ export class Board {
       ctx.strokeStyle = '#fff'
       ctx.lineWidth = 2
       ctx.stroke()
-      if (!justDone.has(u)) this.#tag(ctx, sx + 14, sy + 14, `${c.avatar} ${c.name}`, c.color, 1)
+      // Naam enkel als die cursor net bewogen heeft: stilstaande cursors blijven klein.
+      if (!justDone.has(u) && now - c.t < 2500) this.#tag(ctx, sx + 14, sy + 14, `${c.avatar} ${c.name}`, c.color, 1)
     }
 
     // Wie tekent er? Een naamlabel aan het puntje van elke lijn die nu getekend wordt.
     this.edgeHits = []
-    const dots = '.'.repeat(1 + (Math.floor(now / 350) % 3))
+    const seen = new Set()
+    let edges = 0
     for (const l of this.lives.values()) {
-      if (l.p.length < 2) continue
+      // Per kind maar één label (ook al tekent het met spiegel of snel na elkaar).
+      if (l.p.length < 2 || seen.has(l.u)) continue
+      seen.add(l.u)
       const u = this.#user(l.u)
       const wx = l.p[l.p.length - 2], wy = l.p[l.p.length - 1]
       const [sx, sy] = this.toScreen(wx, wy)
-      if (this.#onScreen(sx, sy)) {
-        const bob = Math.sin(now / 160) * 2
-        this.#tag(ctx, sx + 12, sy + 10 + bob, `${u.avatar} ${u.name} tekent${dots}`, u.color, 1)
-      } else {
-        this.#edgeMarker(ctx, sx, sy, wx, wy, u)
-      }
+      if (this.#onScreen(sx, sy)) this.#tag(ctx, sx + 12, sy + 10, `${u.avatar} ${u.name}`, u.color, 1)
+      else if (edges++ < 5) this.#edgeMarker(ctx, sx, sy, wx, wy, u)
     }
     for (const r of this.recent) {
+      if (seen.has(r.u)) continue
       const [sx, sy] = this.toScreen(r.x, r.y)
       if (!this.#onScreen(sx, sy)) continue
       const u = this.#user(r.u)
-      const a = Math.min(1, 2.6 - (now - r.t) / 1000)
-      this.#tag(ctx, sx + 12, sy + 10, `${u.avatar} ${u.name} ✓`, u.color, a)
+      const a = Math.min(1, 1.4 - (now - r.t) / 1000)
+      this.#tag(ctx, sx + 12, sy + 10, `${u.avatar} ${u.name}`, u.color, a)
+    }
+    // "Hier is plaats voor jou": een stippelkader dat even zichtbaar blijft.
+    if (this.spotFlash) {
+      const age = now - this.spotFlash.t
+      if (age > 3500) this.spotFlash = null
+      else {
+        const [x0, y0] = this.toScreen(this.spotFlash.r[0], this.spotFlash.r[1])
+        const [x1, y1] = this.toScreen(this.spotFlash.r[2], this.spotFlash.r[3])
+        ctx.save()
+        ctx.globalAlpha = Math.min(1, (3500 - age) / 800)
+        ctx.strokeStyle = this.#user(this.uid).color
+        ctx.lineWidth = 4
+        ctx.setLineDash([14, 10])
+        roundRect(ctx, x0 + 10, y0 + 10, x1 - x0 - 20, y1 - y0 - 20, 24)
+        ctx.stroke()
+        ctx.restore()
+        this.dirtyLive = true
+      }
     }
   }
 
@@ -689,60 +770,57 @@ export class Board {
   #tag(ctx, x, y, text, color, alpha, alignEnd = false) {
     ctx.save()
     ctx.globalAlpha = Math.max(0, alpha)
-    ctx.font = `800 15px "Baloo 2", system-ui, sans-serif`
+    ctx.font = `800 13px "Baloo 2", system-ui, sans-serif`
     ctx.textBaseline = 'middle'
-    const tw = ctx.measureText(text).width + 18
+    const tw = ctx.measureText(text).width + 16
     if (alignEnd) x -= tw
     x = Math.max(4, Math.min(x, this.w - tw - 4))
     ctx.shadowColor = 'rgba(0,0,0,.25)'
     ctx.shadowBlur = 6
     ctx.shadowOffsetY = 2
     ctx.fillStyle = color
-    roundRect(ctx, x, y, tw, 26, 13)
+    roundRect(ctx, x, y, tw, 22, 11)
     ctx.fill()
     ctx.shadowColor = 'transparent'
     ctx.strokeStyle = 'rgba(255,255,255,.9)'
     ctx.lineWidth = 2
     ctx.stroke()
     ctx.fillStyle = contrastText(color)
-    ctx.fillText(text, x + 9, y + 14)
+    ctx.fillText(text, x + 8, y + 12)
     ctx.restore()
   }
 
   /** Iemand tekent buiten beeld: een rondje met zijn/haar dier aan de rand, met pijltje. */
   #edgeMarker(ctx, sx, sy, wx, wy, u) {
-    // binnen de knoppenbalken blijven (gereedschap links, kleuren rechts)
-    const mL = 120, mR = this.w - 125, mT = 100, mB = this.h - 40
+    // binnen de knoppenbalken blijven (gereedschap links, kleuren rechts, balk onderaan)
+    const mL = 120, mR = this.w - 125, mT = 100, mB = this.h - 100
     const cx = this.w / 2, cy = this.h / 2
     const dx = sx - cx, dy = sy - cy
     const t = Math.min(dx > 0 ? (mR - cx) / dx : dx < 0 ? (mL - cx) / dx : Infinity, dy > 0 ? (mB - cy) / dy : dy < 0 ? (mT - cy) / dy : Infinity)
     const x = cx + dx * t, y = cy + dy * t
-    const a = Math.atan2(dy, dx)
     ctx.save()
-    ctx.fillStyle = u.color
     ctx.translate(x, y)
+    ctx.fillStyle = u.color
     ctx.save()
-    ctx.rotate(a)
+    ctx.rotate(Math.atan2(dy, dx))
     ctx.beginPath()
-    ctx.moveTo(34, 0)
-    ctx.lineTo(20, -10)
-    ctx.lineTo(20, 10)
+    ctx.moveTo(27, 0)
+    ctx.lineTo(16, -8)
+    ctx.lineTo(16, 8)
     ctx.closePath()
     ctx.fill()
     ctx.restore()
     ctx.beginPath()
-    ctx.arc(0, 0, 22, 0, Math.PI * 2)
+    ctx.arc(0, 0, 17, 0, Math.PI * 2)
     ctx.fill()
     ctx.strokeStyle = '#fff'
     ctx.lineWidth = 3
     ctx.stroke()
-    ctx.font = `22px ${EMOJI_FONT}`
+    ctx.font = `17px ${EMOJI_FONT}`
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
     ctx.fillText(u.avatar, 0, 1)
     ctx.restore()
-    const right = x > this.w / 2
-    this.#tag(ctx, right ? x - 28 : x + 28, y - 13, `${u.name} tekent daar`, u.color, 1, right)
     this.edgeHits.push({ x, y, wx, wy })
   }
 
@@ -1391,27 +1469,57 @@ export class Board {
   #buildUi() {
     const tools = $('tools')
     for (const t of TOOLS) {
-      if (t === 'sep') {
-        tools.insertAdjacentHTML('beforeend', '<div class="tool-sep"></div>')
-        continue
-      }
       const b = document.createElement('button')
       b.className = 'tool'
       b.dataset.tool = t.id
       b.title = t.label
-      if (t.icon === 'ball') {
-        const img = document.createElement('img')
-        img.src = stickerUrl('bal-geel')
-        img.alt = ''
-        b.appendChild(img)
-      } else b.append(t.icon)
+      const ic = document.createElement('span')
+      ic.className = 'tool-icon'
+      ic.textContent = t.icon
       const sm = document.createElement('small')
       sm.textContent = t.label
-      b.appendChild(sm)
+      b.append(ic, sm)
       b.onclick = () => this.setTool(t.id)
       tools.appendChild(b)
     }
 
+    // penselen (achter de knop "Tekenen")
+    const brow = $('brushRow')
+    for (const br of BRUSHES_UI) {
+      const b = document.createElement('button')
+      b.dataset.brush = br.id
+      b.innerHTML = ''
+      const ic = document.createElement('span')
+      if (br.icon === 'ball') {
+        const img = document.createElement('img')
+        img.src = stickerUrl('bal-geel')
+        img.alt = ''
+        ic.appendChild(img)
+      } else ic.textContent = br.icon
+      const sm = document.createElement('small')
+      sm.textContent = br.label
+      b.append(ic, sm)
+      b.onclick = () => {
+        $('brushSheet').hidden = true
+        this.setTool(br.id)
+      }
+      brow.appendChild(b)
+    }
+
+    // kleuren: eerst de krachtballen
+    const bsw = $('ballSwatches')
+    for (const bc of BALL_COLORS) {
+      const b = document.createElement('button')
+      b.className = 'swatch ball'
+      b.dataset.color = bc.hex
+      b.title = 'Bal ' + bc.label
+      const img = document.createElement('img')
+      img.src = stickerUrl(bc.ball)
+      img.alt = ''
+      b.appendChild(img)
+      b.onclick = () => this.setColor(bc.hex)
+      bsw.appendChild(b)
+    }
     const sw = $('swatches')
     for (const c of COLORS) {
       const b = document.createElement('button')
@@ -1423,10 +1531,48 @@ export class Board {
       sw.appendChild(b)
     }
     $('customColor').oninput = (e) => this.setColor(e.target.value)
-    $('sizeRange').oninput = (e) => {
-      this.size = Number(e.target.value)
-      this.#updateSizePreview()
+
+    const sizes = $('sizes')
+    for (const v of SIZES) {
+      const b = document.createElement('button')
+      b.dataset.size = String(v)
+      b.title = ['Dun', 'Normaal', 'Dik', 'Heel dik'][SIZES.indexOf(v)]
+      const dot = document.createElement('span')
+      const d = 6 + SIZES.indexOf(v) * 7
+      dot.style.width = dot.style.height = d + 'px'
+      b.appendChild(dot)
+      b.onclick = () => {
+        this.size = v
+        this.#updateSizePreview()
+        sound.tick()
+      }
+      sizes.appendChild(b)
     }
+
+    // krachtbal-balk
+    const dock = $('dock')
+    for (const id of DOCK) {
+      const b = document.createElement('button')
+      b.dataset.sticker = id
+      b.title = STICKER_LABELS[id] ?? id
+      const img = document.createElement('img')
+      img.src = stickerUrl(id)
+      img.alt = ''
+      b.appendChild(img)
+      b.onclick = () => {
+        this.sticker = id
+        this.#updateStickerTool()
+        this.setTool('sticker', false)
+        sound.pop()
+      }
+      dock.appendChild(b)
+    }
+    const more = document.createElement('button')
+    more.className = 'dock-more'
+    more.title = 'Meer stickers'
+    more.textContent = '＋'
+    more.onclick = () => this.setTool('sticker', true)
+    dock.appendChild(more)
 
     // stickers
     const grid = $('stickerGrid')
@@ -1456,6 +1602,7 @@ export class Board {
           // Blad dicht zodat je meteen overal kan plakken; ⭐ opnieuw aantikken opent het weer.
           $('stickerSheet').hidden = true
           this.#updateStickerTool()
+          this.#syncDock()
           if (isColoringPage(id)) this.toast('🖍️ Plak de kleurplaat en kleur hem in. De lijnen blijven altijd bovenaan!')
           else if (!this.stickerHintShown) this.toast('Tik op het blad om te plakken!')
           this.stickerHintShown = true
@@ -1538,43 +1685,102 @@ export class Board {
     }
 
     $('undoBtn').onclick = () => this.undo()
-    $('redoBtn').onclick = () => this.redo()
-    $('zoomIn').onclick = () => this.zoomAt(this.w / 2, this.h / 2, 1.4)
-    $('zoomOut').onclick = () => this.zoomAt(this.w / 2, this.h / 2, 1 / 1.4)
-    $('zoomLabel').onclick = () => this.home()
-    $('photoBtn').onclick = () => this.photo()
-    $('reactBtn').onclick = () => ($('reactSheet').hidden = !$('reactSheet').hidden)
+    // In het ⋯-menu: na een keuze klapt het menu weer dicht (behalve bij zoomen).
+    const menu = (id, fn, keepOpen = false) => {
+      $(id).onclick = () => {
+        fn()
+        if (!keepOpen) $('menuSheet').hidden = true
+      }
+    }
+    $('menuBtn').onclick = () => {
+      $('menuSheet').hidden = !$('menuSheet').hidden
+      $('reactSheet').hidden = true
+    }
+    menu('redoBtn', () => this.redo())
+    menu('zoomIn', () => this.zoomAt(this.w / 2, this.h / 2, 1.4), true)
+    menu('zoomOut', () => this.zoomAt(this.w / 2, this.h / 2, 1 / 1.4), true)
+    menu('zoomLabel', () => this.home())
+    menu('spotBtn', () => this.freeSpot())
+    menu('mineBtn', () => this.#goToMine())
+    menu('handBtn', () => this.setTool('hand'))
+    menu('photoBtn', () => this.photo())
+    $('reactBtn').onclick = () => {
+      $('reactSheet').hidden = !$('reactSheet').hidden
+      $('menuSheet').hidden = true
+    }
     $('ideaBtn').onclick = () => this.#sendChallenge()
     $('ideaBanner').onclick = () => ($('ideaBanner').hidden = true)
-    $('fsBtn').onclick = () => this.#toggleFullscreen()
-    $('focusBtn').onclick = () => this.#setFocus(true)
+    menu('fsBtn', () => this.#toggleFullscreen())
+    menu('focusBtn', () => this.#setFocus(true))
     $('unfocusBtn').onclick = () => this.#setFocus(false)
-    $('soundBtn').onclick = () => {
-      sound.enabled = !sound.enabled
-      $('soundBtn').textContent = sound.enabled ? '🔊' : '🔇'
-      try { localStorage.setItem('tc-sound', sound.enabled ? '1' : '0') } catch {}
+    const soundLabel = () => {
+      $('soundBtn').firstElementChild.textContent = sound.enabled ? '🔊' : '🔇'
+      $('soundBtn').lastChild.textContent = sound.enabled ? 'Geluid staat aan' : 'Geluid staat uit'
     }
+    menu('soundBtn', () => {
+      sound.enabled = !sound.enabled
+      soundLabel()
+      try { localStorage.setItem('tc-sound', sound.enabled ? '1' : '0') } catch {}
+    }, true)
     try { sound.enabled = localStorage.getItem('tc-sound') !== '0' } catch {}
-    $('soundBtn').textContent = sound.enabled ? '🔊' : '🔇'
+    soundLabel()
     if (!document.fullscreenEnabled && !document.documentElement.webkitRequestFullscreen) $('fsBtn').hidden = true
 
     this.setTool('pen')
     this.setColor(this.color)
     this.#updateSizePreview()
+    this.#updateDrawTool()
   }
 
-  setTool(id) {
+  /** Kies een tool. `sheet` = het bijhorende blad openen (standaard: bij opnieuw aantikken). */
+  setTool(id, sheet) {
+    // "Tekenen" = het laatst gekozen penseel; nog eens tikken toont alle penselen.
+    let brushPick = false
+    if (id === 'draw') {
+      brushPick = BRUSH_TOOLS.includes(this.tool)
+      id = this.lastBrush
+    }
     const again = this.tool === id
     this.tool = id
     if (BRUSH_TOOLS.includes(id)) this.lastBrush = id
-    document.querySelectorAll('.tool').forEach((b) => b.classList.toggle('on', b.dataset.tool === id))
-    $('stickerSheet').hidden = id !== 'sticker' || (again && !$('stickerSheet').hidden)
-    $('fillSheet').hidden = id !== 'fill'
-    $('shapeSheet').hidden = id !== 'shape' || (again && !$('shapeSheet').hidden)
+    const isBrush = BRUSH_TOOLS.includes(id)
+    document.querySelectorAll('.tool').forEach((b) => b.classList.toggle('on', b.dataset.tool === id || (b.dataset.tool === 'draw' && isBrush)))
+    const open = (sheetId, wanted) => {
+      const el = $(sheetId)
+      el.hidden = !wanted
+    }
+    open('brushSheet', isBrush && brushPick && $('brushSheet').hidden)
+    open('stickerSheet', id === 'sticker' && (sheet ?? !(again && !$('stickerSheet').hidden)))
+    open('shapeSheet', id === 'shape' && (sheet ?? !(again && !$('shapeSheet').hidden)))
+    open('fillSheet', id === 'fill')
     if (id === 'fill' || id === 'shape') this.#updatePatternPreviews()
     this.live.style.cursor = id === 'hand' ? 'grab' : id === 'text' ? 'text' : 'crosshair'
+    this.#updateDrawTool()
+    this.#syncDock()
     this.dirtyLive = true
     sound.tick()
+  }
+
+  /** De knop "Tekenen" toont het penseel dat je nu gebruikt. */
+  #updateDrawTool() {
+    const ic = document.querySelector('.tool[data-tool=draw] .tool-icon')
+    if (!ic) return
+    const br = BRUSHES_UI.find((b) => b.id === this.lastBrush)
+    ic.textContent = ''
+    if (br.icon === 'ball') {
+      const img = document.createElement('img')
+      img.src = stickerUrl('bal-geel')
+      img.alt = ''
+      ic.appendChild(img)
+    } else ic.textContent = br.icon
+    document.querySelectorAll('#brushRow button').forEach((b) => b.classList.toggle('on', b.dataset.brush === this.lastBrush))
+  }
+
+  /** De krachtbal-balk verdwijnt zolang er een blad onderaan openstaat. */
+  #syncDock() {
+    const sheetOpen = ['stickerSheet', 'shapeSheet', 'fillSheet', 'brushSheet'].some((id) => !$(id).hidden)
+    $('dock').hidden = sheetOpen
+    $('dock').querySelectorAll('button[data-sticker]').forEach((b) => b.classList.toggle('on', this.tool === 'sticker' && b.dataset.sticker === this.sticker))
   }
 
   setColor(c) {
@@ -1601,11 +1807,11 @@ export class Board {
   }
 
   #updateSizePreview() {
-    const s = $('sizePreview').firstElementChild
-    const d = Math.min(60, Math.max(3, this.size * 0.75))
-    s.style.width = s.style.height = d + 'px'
-    s.style.background = this.color
-    s.style.boxShadow = this.color.toLowerCase() === '#ffffff' ? '0 0 0 1px #999' : ''
+    const light = this.color.toLowerCase() === '#ffffff'
+    for (const b of $('sizes').children) {
+      b.classList.toggle('on', Number(b.dataset.size) === this.size)
+      b.firstElementChild.style.background = light ? '#cbd5d1' : this.color
+    }
     this.dirtyLive = true
   }
 
@@ -1623,6 +1829,11 @@ export class Board {
 
   #closeSheetsOnDraw() {
     $('reactSheet').hidden = true
+    $('menuSheet').hidden = true
+    if (!$('brushSheet').hidden) {
+      $('brushSheet').hidden = true
+      this.#syncDock()
+    }
   }
 
   #toggleFullscreen() {
@@ -1646,7 +1857,7 @@ export class Board {
     const others = this.users.filter((u) => u.u !== this.uid)
     const me = this.users.find((u) => u.u === this.uid)
     const list = me ? [me, ...others] : others
-    for (const u of list.slice(0, 8)) {
+    for (const u of list.slice(0, 6)) {
       const b = document.createElement('button')
       b.style.background = u.color
       b.textContent = u.avatar
@@ -1661,10 +1872,10 @@ export class Board {
       }
       box.appendChild(b)
     }
-    if (list.length > 8) {
+    if (list.length > 6) {
       const more = document.createElement('button')
       more.className = 'more'
-      more.textContent = '+' + (list.length - 8)
+      more.textContent = '+' + (list.length - 6)
       box.appendChild(more)
     }
   }

@@ -64,35 +64,48 @@
       <div class="room-title"><span id="roomName"></span><span id="netDot" class="net-dot" title="Verbinding"></span></div>
       <div id="people" class="people"></div>
       <div class="tb-group">
-        <button id="undoBtn" class="tb-btn" title="Ongedaan maken">↩️</button>
-        <button id="redoBtn" class="tb-btn" title="Opnieuw">↪️</button>
-      </div>
-      <div class="tb-group zoom">
-        <button id="zoomOut" class="tb-btn" title="Uitzoomen">➖</button>
-        <button id="zoomLabel" class="zoom-label" title="Alles tonen">100%</button>
-        <button id="zoomIn" class="tb-btn" title="Inzoomen">➕</button>
-      </div>
-      <div class="tb-group">
-        <button id="ideaBtn" class="tb-btn" title="Geef me een idee">💡</button>
+        <button id="undoBtn" class="tb-btn big-undo" title="Oeps, ongedaan maken">↩️</button>
+        <button id="ideaBtn" class="tb-btn" title="Tekenuitdaging voor iedereen">💡</button>
         <button id="reactBtn" class="tb-btn" title="Reageren">🎉</button>
-        <button id="photoBtn" class="tb-btn" title="Foto bewaren">📷</button>
-        <button id="soundBtn" class="tb-btn" title="Geluid aan/uit">🔊</button>
-        <button id="focusBtn" class="tb-btn" title="Knoppen verbergen">🙈</button>
-        <button id="fsBtn" class="tb-btn" title="Volledig scherm">⛶</button>
+        <button id="menuBtn" class="tb-btn" title="Meer">⋯</button>
       </div>
     </header>
+
+    <!-- Alles wat je niet elke minuut nodig hebt, zit hier: zo blijft het scherm rustig. -->
+    <div id="menuSheet" class="menu-sheet ui" hidden>
+      <button id="redoBtn"><span>↪️</span>Opnieuw</button>
+      <button id="spotBtn"><span>📍</span>Zoek een vrij plekje</button>
+      <button id="mineBtn"><span>🔎</span>Naar mijn tekening</button>
+      <button id="zoomLabel"><span>🗺️</span>Alles bekijken</button>
+      <div class="menu-row">
+        <button id="zoomOut" title="Uitzoomen">➖</button>
+        <span id="zoomPct">100%</span>
+        <button id="zoomIn" title="Inzoomen">➕</button>
+      </div>
+      <button id="handBtn"><span>✋</span>Blad verschuiven</button>
+      <button id="photoBtn"><span>📷</span>Foto bewaren</button>
+      <button id="soundBtn"><span>🔊</span>Geluid</button>
+      <button id="fsBtn"><span>⛶</span>Volledig scherm</button>
+      <button id="focusBtn"><span>🙈</span>Knoppen verbergen</button>
+    </div>
 
     <nav id="tools" class="tools ui" aria-label="Gereedschap"></nav>
 
     <aside class="palette ui" aria-label="Kleuren">
+      <div class="pal-label">Balkleuren</div>
+      <div id="ballSwatches" class="swatches balls"></div>
       <div id="swatches" class="swatches"></div>
-      <button id="mirrorBtn" class="mirror-btn" title="Spiegeltekenen">🦋<small>uit</small></button>
       <label class="custom-color" title="Eigen kleur"><input id="customColor" type="color" value="#ff00aa" /><span>🎨</span></label>
-      <div class="size-box">
-        <div id="sizePreview" class="size-preview"><span></span></div>
-        <input id="sizeRange" type="range" min="2" max="90" value="12" aria-label="Dikte" />
-      </div>
+      <div id="sizes" class="sizes" aria-label="Dikte"></div>
+      <button id="mirrorBtn" class="mirror-btn" title="Spiegeltekenen">🦋<small>uit</small></button>
     </aside>
+
+    <!-- De krachtbal-balk: met één tik een bal, trui of beker kiezen. -->
+    <div id="dock" class="dock ui" aria-label="Krachtbal-stickers"></div>
+
+    <div id="brushSheet" class="sheet ui small" hidden>
+      <div id="brushRow" class="brush-row"></div>
+    </div>
 
     <div id="stickerSheet" class="sheet ui" hidden>
       <div class="sheet-tabs">
@@ -101,17 +114,17 @@
         <button data-tab="emoji">😀 Emoji</button>
       </div>
       <div id="stickerGrid" class="sticker-grid"></div>
-      <div class="sheet-hint">Tik een sticker aan en tik dan op het blad om hem te plakken. Hoe dikker de grootte-schuif, hoe groter!</div>
+      <div class="sheet-hint">Kies een sticker en tik op het blad.</div>
     </div>
 
     <div id="shapeSheet" class="sheet ui small shape-sheet" hidden>
-      <div class="sheet-hint">Kies een vorm en sleep op het blad (of tik voor een vorm op standaardgrootte).</div>
+      <div class="sheet-hint">Kies een vorm, tik of sleep op het blad.</div>
       <div id="shapeRow" class="shape-row"></div>
-      <label class="switch"><input id="shapeFill" type="checkbox" /><span></span> Opvullen <small>(patroon kies je bij 🪣)</small></label>
+      <label class="switch"><input id="shapeFill" type="checkbox" /><span></span> Opvullen</label>
     </div>
 
     <div id="fillSheet" class="sheet ui small" hidden>
-      <div class="sheet-hint">Teken een rondje rond een vorm en hij wordt opgevuld met:</div>
+      <div class="sheet-hint">Teken een rondje: het wordt opgevuld met</div>
       <div id="patternRow" class="pattern-row"></div>
     </div>
 

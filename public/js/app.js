@@ -48,7 +48,7 @@ let medalFreeAt = 0
 onMedal((m) => {
   const now = Date.now()
   const at = Math.max(now, medalFreeAt)
-  medalFreeAt = at + 2400
+  medalFreeAt = at + 3900
   setTimeout(() => showMedal(m), at - now)
 })
 

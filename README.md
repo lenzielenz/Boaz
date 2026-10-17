@@ -9,6 +9,27 @@ Later gaat dit naar de website van Krachtbal Live (zie onderaan).
 
 ## Wat kan je allemaal?
 
+**Rustig scherm, krachtbal vooraan.** Veel mogelijkheden, maar tijdens het
+tekenen zie je enkel wat je nodig hebt:
+
+- Links 6 grote knoppen: ✏️ Tekenen (nog eens tikken = alle penselen),
+  ⭐ Stickers, 🔷 Vormen, 🪣 Vullen, 🔤 Tekst, 🧽 Gom.
+- Rechts de kleuren, met bovenaan de **5 krachtbalkleuren als echte balletjes**,
+  4 dikte-knopjes en de 🦋 spiegel.
+- Onderaan de **krachtbal-balk**: de 5 ballen, trui, beker, doelpunt, fluit en
+  het logo — één tik en je plakt. ＋ opent alle stickers.
+- Bovenaan enkel ↩️ oeps, 💡 uitdaging, 🎉 reageren en ⋯ voor de rest
+  (opnieuw, vrij plekje, naar mijn tekening, alles bekijken, zoom, foto,
+  geluid, volledig scherm, knoppen verbergen).
+
+**Met 10 kinderen op één blad**
+- Kom je binnen in een volle ruimte, dan zoekt de app automatisch een **vrij
+  plekje** naast de rest (met een stippelkader "hier is plaats voor jou").
+  Via ⋯ kan je altijd opnieuw een vrij plekje zoeken.
+- Naamlabels zijn klein en enkel bij wie nu tekent; stilstaande cursors tonen
+  geen naam. Wie buiten beeld tekent, zie je als rondje met dier aan de rand
+  (max. 5). Komen er veel kinderen tegelijk binnen: één melding.
+
 **Samen tekenen**
 - Wie meetekent, zie je meteen: aan het puntje van elke lijn die iemand nu
   tekent hangt een naamlabel (**"🐨 Mats tekent…"**), dat nog even blijft
